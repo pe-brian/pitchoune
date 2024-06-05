@@ -1,2 +1,3 @@
-prettytable == 0.2.12
-typeguard == 4.1.5
+prettytable==3.10.0
+typeguard==4.3.0
+chocolatine==0.87

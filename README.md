@@ -1,15 +1,9 @@
-# Version
+# Pitchoune
 
-v0.1.0
+![Image](logo.jpg)
 
-# Philosophy
+Pitchoune is data transformation Python library
 
-* No useless functionnalities
-* Only one way to do something
-* Lowest code possible
-* Immutables tables and columns
-* Low memory usage
-* Code testing
 
 # Functionnalities
 
@@ -126,12 +120,3 @@ v0.1.0
     ```python
    result_table = table.join(other_table, "left", lambda a, b: a["Index"] == b["Index"])
     ```
-
-# Todo
-
-* Column renaming
-* Multi-column sortering
-* Jointures
-* Pivot/unpivot table
-* CSV saving
-* Auto infer type

@@ -1,0 +1,5 @@
+polars>=1.29.0
+rapidfuzz>=3.13.0
+openai>=1.79.0
+ollama>=0.4.8
+xlsxwriter>=3.2.3

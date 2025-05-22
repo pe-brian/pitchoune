@@ -14,11 +14,11 @@ class Ploup_IO(IO):
     def __init__(self):
         super().__init__(suffix="ploup")
 
-    def deserialize(self, filepath: str, schema=None, separator: str=";", decimal_comma: bool = False) -> None:
-        return pl.read_csv(filepath, schema_overrides=schema, encoding="utf-8", separator=separator, decimal_comma=decimal_comma)
+    def deserialize(self, filepath: str) -> None:
+        return pl.read_csv(filepath, encoding="utf-8")
 
-    def serialize(self, df: pl.DataFrame, filepath: str, separator: str=";") -> None:
-        df.write_csv(filepath, separator=separator, quote_style="non_numeric", include_bom=True)
+    def serialize(self, df: pl.DataFrame, filepath: str) -> None:
+        df.write_csv(filepath)
 
 
 base_io_factory.register("ploup", Ploup_IO)

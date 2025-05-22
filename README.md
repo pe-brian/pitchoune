@@ -14,7 +14,7 @@ A Python library on top of Polars to load & save (normal or streaming mode) data
     - Inject each column as a parameter of the function
     - Provide as parameters the current_row and total_row
     - Can handle recovery (in case of error or process stopping) with the parameter "recover_from".
-      Just set it to the output file path and it will use the last row written + 1 as a start for the stream in function.
+      Just set it to the output file path and it will use the right row for the read_stream function.
 
 - Current workdir for filepaths : set CURRENT_WORKDIR env variable
 

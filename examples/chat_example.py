@@ -12,10 +12,10 @@ with open("data/dummy.jsonl", "w") as file:
 
 def validate_response(foo):
     """Validate the response from the chat model."""
-    for _ in range(3):
-        res = foo()
+    for _ in range(3):  # try 3 times
+        res = foo()  # call the function
         try:
-            return int(res)
+            return int(res)  # try to convert to int
         except ValueError as e:
             pass
 

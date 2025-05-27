@@ -24,7 +24,7 @@ A Python library on top of Polars to load & save (normal or streaming mode) data
 
 - Use chat :
     - Ollama chat (see chat_example)
-    - OpenAI chat (you must then set OPENAI_API_KEY as env variable)
+    - OpenAI chat (you must then set OPENAI_API_KEY env variable)
 
 # Todo
 

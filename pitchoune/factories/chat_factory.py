@@ -6,8 +6,8 @@ from pitchoune.factory import Factory
 
 class ChatFactory(Factory):
     """Factory class to create chat instances."""
-    def __init__(self, model: str=None, prompt: str=None, local: bool=False, params: dict = None, client=None):
-        super().__init__(base_class=Chat, model=model, prompt=prompt, local=local, params=params, client=client)
+    def __init__(self, model: str=None, prompt: str=None, local: bool=False, params: dict = None):
+        super().__init__(base_class=Chat, model=model, prompt=prompt, local=local, params=params)
 
     def create(self, *args, local: bool=False, **kwargs):
         """Create an instance of the chat class."""

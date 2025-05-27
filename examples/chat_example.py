@@ -23,9 +23,9 @@ def validate_response(foo):
 @use_chat(name="multiply_agent", prompt="Complete the formula. Return only digits.", local=True, model="mistral-nemo")
 @read_stream("data/dummy.jsonl", recover_progress_from="data/output.jsonl")
 @write_stream("data/output.jsonl")
-def main(id, a, b, multiply_agent):
+def main(current_line, total_lines, id, a, b, multiply_agent):
     res = validate_response(lambda: multiply_agent.send_msg(f"{a}x{b}="))
-    return {"id": id, "a": a, "b": b, "result": res}
+    return {"id": id, "a": a, "b": b, "result": res, "current_line": current_line, "total_lines": total_lines}
 
 
 if __name__ == "__main__":

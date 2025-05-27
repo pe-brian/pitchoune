@@ -22,9 +22,9 @@ def check_duplicates(df: pl.DataFrame, *id_cols: str) -> None:
         raise ValueError(f"Des doublons ont été trouvés :\n{duplicates}")
 
 
-def to_path(path_str: str) -> Path:
+def to_path(value: Path|str) -> Path:
     """Cast a string to a Path object if it's a string."""
-    return Path(path_str) if isinstance(path_str, str) else path_str
+    return value if isinstance(value, Path) else Path(value)
 
 
 # files functions
@@ -132,10 +132,8 @@ def change_suffix(filepath: str, new_suffix: str):
 
 def complete_path_with_workdir(filepath: str|Path) -> Path:
     """Complete the file path with the current working directory."""
-    workdir = to_path(os.getenv("CURRENT_WORKDIR"))
-    if workdir:
-        filepath = workdir / to_path(filepath) if workdir else to_path(filepath)
-    return filepath
+    workdir = os.getenv("CURRENT_WORKDIR")
+    return workdir / to_path(filepath) if workdir else to_path(filepath)
 
 
 # other functions

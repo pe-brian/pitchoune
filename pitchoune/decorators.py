@@ -1,4 +1,5 @@
 import functools
+import inspect
 import json
 import os
 from pathlib import Path
@@ -57,9 +58,6 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
                 new_recover_progress_from = complete_path_with_workdir(recover_progress_from)
                 with open(new_recover_progress_from, "r", encoding="utf-8") as f:
                     already_done = sum(1 for _ in f)
-                    print(f"Already done: {already_done}")
-                    if already_done > 0:
-                        print(f"Recovering progress from {recover_progress_from}")
             with open(new_filepath, "r", encoding="utf-8") as f:  # Reading and processing the JSONL file
                 for current_line, line in enumerate(f, start=1):
                     if current_line <= already_done:
@@ -67,9 +65,9 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
                     if new_filepath.suffix == ".jsonl":
                         data = json.loads(line)  # Cast the line to a dictionary
                         kwargs |= data
-                        if "total_lines" in kwargs:
+                        if "total_lines" in inspect.signature(func).parameters:
                             kwargs["total_lines"] = total_lines
-                        if "current_line" in kwargs:
+                        if "current_line" in inspect.signature(func).parameters:
                             kwargs["current_line"] = current_line
                         func(*args, **kwargs)
                     else:
@@ -83,9 +81,8 @@ def write_stream(filepath: Path|str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            workdir = to_path(os.getenv("CURRENT_WORKDIR"))
             new_filepath = (get_main_module_name() + filepath) if is_only_extension(filepath) else filepath
-            new_filepath = workdir / to_path(new_filepath) if workdir else to_path(new_filepath)
+            new_filepath = complete_path_with_workdir(new_filepath)
             data = func(*args, **kwargs)  # Calling the decorated function
             if data is None:
                 return data

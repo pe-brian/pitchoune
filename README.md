@@ -28,5 +28,4 @@ A Python library on top of Polars to load & save (normal or streaming mode) data
 
 # Todo
 
-- Installation from pypi (pip install...)
 - Testing

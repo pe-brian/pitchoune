@@ -4,6 +4,7 @@ from pitchoune.ios.csv_io import CSV_IO
 from pitchoune.ios.jsonl_io import JSONL_IO
 from pitchoune.ios.tsv_io import TSV_IO
 from pitchoune.ios.xlsx_io import XLSX_IO
+from pitchoune.ios.xlsm_io import XLSM_IO
 
 
 class IOFactory(Factory):
@@ -14,6 +15,7 @@ class IOFactory(Factory):
             "xlsx": XLSX_IO,
             "csv": CSV_IO,
             "tsv": TSV_IO,
+            "xlsm": XLSM_IO
         }
         super().__init__(base_class=IO)
 

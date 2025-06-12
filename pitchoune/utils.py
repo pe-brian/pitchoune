@@ -131,8 +131,8 @@ def change_suffix(filepath: str, new_suffix: str):
 
 
 def complete_path_with_workdir(filepath: str|Path) -> Path:
-    """Complete the file path with the current working directory."""
-    workdir = os.getenv("CURRENT_WORKDIR")
+    """Complete the file path with the pitchoune working directory."""
+    workdir = os.getenv("PITCHOUNE_WORKDIR")
     return workdir / to_path(filepath) if workdir else to_path(filepath)
 
 

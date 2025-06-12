@@ -7,7 +7,7 @@ with open("not_checked.csv", "w") as file:
 
 
 @input_df("not_checked.csv")
-@output_df("checked.xlsx", human_check=True)
+@output_df(".xlsx", human_check=True)
 def main(df):
     return df
 

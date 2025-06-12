@@ -14,7 +14,7 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, e
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            workdir = to_path(os.getenv("CURRENT_WORKDIR"))
+            workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = workdir / to_path(filepath) if workdir else to_path(filepath)
             if exec_before:
                 new_filepath = exec_before(new_filepath)
@@ -32,14 +32,14 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            workdir = to_path(os.getenv("CURRENT_WORKDIR"))
+            workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = (get_main_module_name() + filepath) if is_only_extension(filepath) else filepath
             new_filepath = workdir / to_path(new_filepath) if workdir else to_path(new_filepath)
             df = func(*args, **kwargs)
             base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(df, new_filepath, **params)
             if human_check:
-                open_file(filepath)  # Open the file for modification
-                watch_file(filepath)  # Wait for the file to be modified
+                open_file(new_filepath)  # Open the file for modification
+                watch_file(new_filepath)  # Wait for the file to be modified
             return df
         return wrapper
     return decorator
@@ -106,7 +106,7 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
         def wrapper(*args, **kwargs):
             new_prompt = prompt  # Get the prompt from the decorator
             if new_prompt is None:
-                workdir = to_path(os.getenv("CURRENT_WORKDIR"))
+                workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
                 new_filepath = workdir / to_path(prompt_filepath) if workdir else to_path(prompt_filepath)
                 with open(new_filepath, "r") as f:
                     new_prompt = f.read()

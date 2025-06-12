@@ -16,7 +16,7 @@ A Python library on top of Polars to load & save (normal or streaming mode) data
     - Can handle recovery (in case of error or process stopping) with the parameter "recover_from".
       Just set it to the output file path and it will use the right row for the read_stream function.
 
-- Current workdir for filepaths : set CURRENT_WORKDIR env variable
+- Current workdir for filepaths : set PITCHOUNE_WORKDIR env variable
 
 - Save to a file with human check option enabled :
     - Open the file with the default editor

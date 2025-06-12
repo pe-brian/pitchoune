@@ -56,12 +56,16 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
                 total_lines = sum(1 for _ in f)
             if recover_progress_from:
                 new_recover_progress_from = complete_path_with_workdir(recover_progress_from)
-                with open(new_recover_progress_from, "r", encoding="utf-8") as f:
-                    already_done = sum(1 for _ in f)
+                try:
+                    with open(new_recover_progress_from, "r", encoding="utf-8") as f:
+                        already_done = sum(1 for _ in f)
+                except FileNotFoundError:
+                    already_done = 0
             with open(new_filepath, "r", encoding="utf-8") as f:  # Reading and processing the JSONL file
                 for current_line, line in enumerate(f, start=1):
-                    if current_line <= already_done:
-                        continue  # Skip lines until we reach the desired start line
+                    if already_done > 0:
+                        if current_line <= already_done:
+                            continue  # Skip lines until we reach the desired start line
                     if new_filepath.suffix == ".jsonl":
                         data = json.loads(line)  # Cast the line to a dictionary
                         kwargs |= data

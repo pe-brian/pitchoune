@@ -3,3 +3,4 @@ rapidfuzz>=3.13.0
 openai>=1.79.0
 ollama>=0.4.8
 xlsxwriter>=3.2.3
+xlwings>=0.33.15

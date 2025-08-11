@@ -8,6 +8,7 @@ import zipfile
 import time
 import subprocess
 import platform
+from typing import Any, Generator
 
 from rapidfuzz.distance import Levenshtein
 import polars as pl
@@ -101,6 +102,16 @@ def percentage_difference(str1: str, str2: str) -> float:
 
 # Path functions
 
+def replace_home_token_by_home_path(path: str) -> str:
+    """Replace <HOME> by home path"""
+    return path.replace("<HOME>", get_home_path())
+
+
+def get_home_path() -> str:
+    """Get the home path"""
+    return str(Path.home())
+
+
 def extract_subfolder_contents(parent_folder: str) -> None:
     """Moves contents from a uniquely named subfolder to `parent_folder` and deletes the subfolder if empty."""
     subfolders = [f for f in os.listdir(parent_folder) if os.path.isdir(os.path.join(parent_folder, f))]  # Get subfolders inside parent_folder
@@ -111,7 +122,7 @@ def extract_subfolder_contents(parent_folder: str) -> None:
         os.rmdir(subfolder_path)  # Remove the now-empty subfolder
 
 
-def iter_all_files(root_folder: Path|str) -> typing.Generator[Path, None, None]:
+def iter_all_files(root_folder: Path|str) -> Generator[Path, None, None]:
     """Recursively yields file paths inside subdirectories of `root_folder`."""
     for folder, _, files in os.walk(root_folder):
         for file in files:
@@ -134,6 +145,36 @@ def complete_path_with_workdir(filepath: str|Path) -> Path:
     """Complete the file path with the pitchoune working directory."""
     workdir = os.getenv("PITCHOUNE_WORKDIR")
     return workdir / to_path(filepath) if workdir else to_path(filepath)
+
+
+def replace_conf_key_by_conf_value(filepath: str) -> str:
+    """Replace conf: by conf value"""
+    if filepath.startswith("conf:"):
+        return load_from_conf(filepath.removeprefix("conf:"))
+    return filepath
+
+
+def load_from_conf(key: str, filename: str = None, ignore_errors: bool = False, default_value: Any = None) -> Any:
+    """Load from conf file"""
+    if not filename:
+        filename = os.getenv("PITCHOUNE_WORKDIR") + "\\.conf"
+    try:
+        with open(filename, "r") as file:
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    if k.strip() == key:
+                        v = v.strip()
+                        return v.strip() or None
+        if not ignore_errors:
+            raise KeyError(f"Key '{key}' not found into the file '{filename}'")
+    except FileNotFoundError:
+        if not ignore_errors:
+            raise FileNotFoundError(f"File '{filename}' not found")
+    return default_value
 
 
 # other functions

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Iterable
 
-from pitchoune.utils import complete_path_with_workdir, open_file, replace_conf_key_by_conf_value, replace_home_token_by_home_path, to_path, check_duplicates, get_main_module_name, is_only_extension, watch_file
+from pitchoune.utils import complete_path_with_workdir, open_file, replace_by_module_name_if_only_extension, replace_conf_key_by_conf_value, replace_home_token_by_home_path, to_path, check_duplicates, get_main_module_name, is_only_extension, watch_file
 from pitchoune import base_io_factory, base_chat_factory
 
 
@@ -16,8 +16,8 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, e
         def wrapper(*args, **kwargs):
             workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = replace_conf_key_by_conf_value(filepath)
-            new_filepath = workdir / to_path(new_filepath) if workdir else to_path(new_filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
+            new_filepath = complete_path_with_workdir(new_filepath)
             if exec_before:
                 new_filepath = exec_before(new_filepath)
             df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
@@ -36,9 +36,9 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
         def wrapper(*args, **kwargs):
             workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = replace_conf_key_by_conf_value(filepath)
-            new_filepath = (get_main_module_name() + new_filepath) if is_only_extension(new_filepath) else new_filepath
-            new_filepath = workdir / to_path(new_filepath) if workdir else to_path(new_filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
+            new_filepath = replace_by_module_name_if_only_extension(new_filepath)
+            new_filepath = complete_path_with_workdir(new_filepath)
             df = func(*args, **kwargs)
             base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(df, new_filepath, **params)
             if human_check:
@@ -56,8 +56,8 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
         def wrapper(*args, **kwargs):
             already_done = 0
             new_filepath = replace_conf_key_by_conf_value(filepath)
-            new_filepath = complete_path_with_workdir(new_filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
+            new_filepath = complete_path_with_workdir(new_filepath)
             with open(new_filepath, "r", encoding="utf-8") as f:  # Compute the total number of lines
                 total_lines = sum(1 for _ in f)
             if recover_progress_from:
@@ -92,9 +92,9 @@ def write_stream(filepath: Path|str):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             new_filepath = replace_conf_key_by_conf_value(filepath)
-            new_filepath = (get_main_module_name() + new_filepath) if is_only_extension(new_filepath) else new_filepath
-            new_filepath = complete_path_with_workdir(new_filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
+            new_filepath = replace_by_module_name_if_only_extension(new_filepath)
+            new_filepath = complete_path_with_workdir(new_filepath)
             data = func(*args, **kwargs)  # Calling the decorated function
             if data is None:
                 return data
@@ -120,8 +120,8 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
             if new_prompt is None:
                 workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
                 new_filepath = replace_conf_key_by_conf_value(prompt_filepath)
-                new_filepath = workdir / to_path(new_filepath) if workdir else to_path(new_filepath)
                 new_filepath = replace_home_token_by_home_path(new_filepath)
+                new_filepath = complete_path_with_workdir(new_filepath)
                 with open(new_filepath, "r") as f:
                     new_prompt = f.read()
             kwargs[name] = base_chat_factory.create(name=name, model=model, prompt=new_prompt, local=local)  # Get the chat instance

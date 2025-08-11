@@ -7,6 +7,7 @@ import xlwings as xw
 from typing import Tuple
 
 from pitchoune.io import IO
+from pitchoune.utils import complete_path_with_workdir, replace_conf_key_by_conf_value, replace_home_token_by_home_path
 
 
 class XLSM_IO(IO):
@@ -41,6 +42,9 @@ class XLSM_IO(IO):
         # Ouverture Excel invisible pour ne rien casser
         app = xw.App(visible=False)
         try:
+            based_on_filepath = replace_conf_key_by_conf_value(based_on_filepath)
+            based_on_filepath = replace_home_token_by_home_path(based_on_filepath)
+            based_on_filepath = complete_path_with_workdir(based_on_filepath)
             wb = app.books.open(based_on_filepath)
             ws = wb.sheets[sheet_name]
             ws.range(start_ref).value = data

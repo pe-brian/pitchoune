@@ -3,7 +3,6 @@ from pathlib import Path
 import re
 import shutil
 import sys
-import typing
 import zipfile
 import time
 import subprocess
@@ -144,7 +143,7 @@ def change_suffix(filepath: str, new_suffix: str):
 def complete_path_with_workdir(filepath: str|Path) -> Path:
     """Complete the file path with the pitchoune working directory."""
     workdir = os.getenv("PITCHOUNE_WORKDIR")
-    return workdir / to_path(filepath) if workdir else to_path(filepath)
+    return workdir / to_path(filepath) if workdir and not os.path.isabs(filepath) else to_path(filepath)
 
 
 def replace_conf_key_by_conf_value(filepath: str) -> str:
@@ -152,6 +151,11 @@ def replace_conf_key_by_conf_value(filepath: str) -> str:
     if filepath.startswith("conf:"):
         return load_from_conf(filepath.removeprefix("conf:"))
     return filepath
+
+
+def replace_by_module_name_if_only_extension(filepath: str):
+    """Replace for example .xlsx by example.xlsx if the main module name is example"""
+    return (get_main_module_name() + filepath) if is_only_extension(filepath) else filepath
 
 
 def load_from_conf(key: str, filename: str = None, ignore_errors: bool = False, default_value: Any = None) -> Any:

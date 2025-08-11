@@ -9,17 +9,14 @@ from pitchoune.utils import complete_path_with_workdir, open_file, replace_by_mo
 from pitchoune import base_io_factory, base_chat_factory
 
 
-def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, exec_before = None, **params):
+def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, **params):
     """Decorator for reading a dataframe from a file"""
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = replace_conf_key_by_conf_value(filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
             new_filepath = complete_path_with_workdir(new_filepath)
-            if exec_before:
-                new_filepath = exec_before(new_filepath)
             df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
             if id_cols:
                 check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
@@ -34,7 +31,6 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
             new_filepath = replace_conf_key_by_conf_value(filepath)
             new_filepath = replace_home_token_by_home_path(new_filepath)
             new_filepath = replace_by_module_name_if_only_extension(new_filepath)
@@ -118,7 +114,6 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
         def wrapper(*args, **kwargs):
             new_prompt = prompt  # Get the prompt from the decorator
             if new_prompt is None:
-                workdir = to_path(os.getenv("PITCHOUNE_WORKDIR", ""))
                 new_filepath = replace_conf_key_by_conf_value(prompt_filepath)
                 new_filepath = replace_home_token_by_home_path(new_filepath)
                 new_filepath = complete_path_with_workdir(new_filepath)

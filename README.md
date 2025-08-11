@@ -18,6 +18,12 @@ A Python library on top of Polars to load & save (normal or streaming mode) data
 
 - Current workdir for filepaths : set PITCHOUNE_WORKDIR env variable
 
+- <HOME> token replacement in filepaths
+
+- conf: token replacement in filepaths (read value from key in .conf file)
+
+- handle .conf file in PITCHOUNE_WORKDIR
+
 - Save to a file with human check option enabled :
     - Open the file with the default editor
     - Then wait for the user to review it & save it

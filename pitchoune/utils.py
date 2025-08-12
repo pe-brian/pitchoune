@@ -181,6 +181,16 @@ def load_from_conf(key: str, filename: str = None, ignore_errors: bool = False, 
     return default_value
 
 
+def enrich_path(path: str | Path) -> str:
+    """Enrich path"""
+    path = str(path)
+    path = replace_conf_key_by_conf_value(path)
+    path = replace_home_token_by_home_path(path)
+    path = replace_by_module_name_if_only_extension(path)
+    path = complete_path_with_workdir(path)
+    return path
+
+
 # other functions
 
 

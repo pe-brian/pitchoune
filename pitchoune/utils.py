@@ -158,8 +158,8 @@ def replace_by_module_name_if_only_extension(filepath: str):
     return (get_main_module_name() + filepath) if is_only_extension(filepath) else filepath
 
 
-def load_from_conf(key: str, filename: str = None, ignore_errors: bool = False, default_value: Any = None) -> Any:
-    """Load from conf file"""
+def load_from_conf(key: str, filename: str = None, default_value: Any = None) -> Any:
+    """Load a value from a configuration file, or return default if not found or empty."""
     if not filename:
         filename = os.getenv("PITCHOUNE_WORKDIR") + "\\.conf"
     try:
@@ -172,12 +172,9 @@ def load_from_conf(key: str, filename: str = None, ignore_errors: bool = False, 
                     k, v = line.split("=", 1)
                     if k.strip() == key:
                         v = v.strip()
-                        return v.strip() or None
-        if not ignore_errors:
-            raise KeyError(f"Key '{key}' not found into the file '{filename}'")
+                        return v if v else default_value
     except FileNotFoundError:
-        if not ignore_errors:
-            raise FileNotFoundError(f"File '{filename}' not found")
+        print("Error: .conf file not found !")
     return default_value
 
 

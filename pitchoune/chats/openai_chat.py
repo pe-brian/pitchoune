@@ -6,7 +6,7 @@ try:
     from openai import OpenAI
     openai = OpenAI()
 except ImportError:
-    print("Error: Cannot find openai library ! Please install it to be able to use OpenAIChat.")
+    pass
 
 
 class OpenAIChat(Chat):

@@ -22,9 +22,11 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, *
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             enriched_filepath = enrich_path(filepath)
-            df = base_io_factory.create(suffix=enriched_filepath.suffix[1:]).deserialize(enriched_filepath, schema, **params)
-            if id_cols:
-                check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
+            df = None
+            if enriched_filepath:
+                df = base_io_factory.create(suffix=enriched_filepath.suffix[1:]).deserialize(enriched_filepath, schema, **params)
+                if id_cols:
+                    check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
             new_args = args + (df,)
             return func(*new_args, **kwargs)
         return wrapper
@@ -37,11 +39,13 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             enriched_filepath = enrich_path(filepath)
-            df = func(*args, **kwargs)
-            base_io_factory.create(suffix=enriched_filepath.suffix[1:]).serialize(df, enriched_filepath, **params)
-            if human_check:
-                open_file(enriched_filepath)  # Open the file for modification
-                watch_file(enriched_filepath)  # Wait for the file to be modified
+            df = None
+            if enriched_filepath:
+                df = func(*args, **kwargs)
+                base_io_factory.create(suffix=enriched_filepath.suffix[1:]).serialize(df, enriched_filepath, **params)
+                if human_check:
+                    open_file(enriched_filepath)  # Open the file for modification
+                    watch_file(enriched_filepath)  # Wait for the file to be modified
             return df
         return wrapper
     return decorator
@@ -67,12 +71,13 @@ def output_dfs(*outputs: dict[str, Any]):
             for df, output_params in zip(dfs, outputs):
                 filepath = output_params.pop("filepath")
                 enriched_filepath = enrich_path(filepath)
-                human_check = output_params.pop("human_check", False)
-                suffix = enriched_filepath.suffix[1:]
-                base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
-                if human_check:
-                    open_file(enriched_filepath)
-                    watch_file(enriched_filepath)
+                if enriched_filepath:
+                    human_check = output_params.pop("human_check", False)
+                    suffix = enriched_filepath.suffix[1:]
+                    base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
+                    if human_check:
+                        open_file(enriched_filepath)
+                        watch_file(enriched_filepath)
             return dfs
         return wrapper
     return decorator
@@ -85,6 +90,8 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
         def wrapper(*args, **kwargs):
             already_done = 0
             enriched_filepath = enrich_path(filepath)
+            if not enriched_filepath:
+                raise Exception("Unable to read data from '{filepath}' !")
             with open(enriched_filepath, "r", encoding="utf-8") as f:  # Compute the total number of lines
                 total_lines = sum(1 for _ in f)
             if recover_progress_from:
@@ -118,6 +125,8 @@ def write_stream(filepath: Path|str):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             enriched_filepath = enrich_path(filepath)
+            if not enriched_filepath:
+                raise Exception("Unable to write data to '{filepath}' !")
             data = func(*args, **kwargs)  # Calling the decorated function
             if data is None:
                 return data

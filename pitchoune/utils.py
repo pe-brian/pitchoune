@@ -188,12 +188,15 @@ def load_from_conf(key: str, filename: str = None, default_value: Any = None) ->
 
 def enrich_path(path: str | Path) -> str:
     """Enrich path"""
-    path = str(path)
-    path = replace_conf_key_by_conf_value(path)
-    path = replace_home_token_by_home_path(path)
-    path = replace_by_module_name_if_only_extension(path)
-    path = complete_path_with_workdir(path)
-    return path
+    p = str(path)
+    p = replace_conf_key_by_conf_value(p)
+    if p == None:
+        print(f"Error: Unable to find key '{path.removeprefix("conf:")}' in .conf file !")
+        return
+    p = replace_home_token_by_home_path(p)
+    p = replace_by_module_name_if_only_extension(p)
+    p = complete_path_with_workdir(p)
+    return p
 
 
 # other functions
@@ -202,4 +205,3 @@ def enrich_path(path: str | Path) -> str:
 def get_main_module_name() -> str:
     """Get the name of the main module (script) without the file extension."""
     return os.path.splitext(os.path.basename(sys.modules["__main__"].__file__))[0]
-

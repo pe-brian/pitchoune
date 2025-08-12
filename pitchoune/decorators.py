@@ -2,7 +2,7 @@ import functools
 import inspect
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from pitchoune.utils import (
     enrich_path,
@@ -43,6 +43,37 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
                 open_file(enriched_filepath)  # Open the file for modification
                 watch_file(enriched_filepath)  # Wait for the file to be modified
             return df
+        return wrapper
+    return decorator
+
+
+def output_dfs(*outputs: dict[str, Any]):
+    """
+        Decorator for writing multiple dataframes to multiple files with individual parameters.
+        
+        Each argument should be a dict containing:
+        - 'filepath': Path or str
+        - Optional: 'human_check': bool
+        - Optional: any other serialization params
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            dfs = func(*args, **kwargs)
+            if not isinstance(dfs, (list, tuple)):
+                raise TypeError("Function must return a list or tuple of DataFrames")
+            if len(dfs) != len(outputs):
+                raise ValueError("Number of outputs must match number of returned DataFrames")
+            for df, output_params in zip(dfs, outputs):
+                filepath = output_params.pop("filepath")
+                enriched_filepath = enrich_path(filepath)
+                human_check = output_params.pop("human_check", False)
+                suffix = enriched_filepath.suffix[1:]
+                base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
+                if human_check:
+                    open_file(enriched_filepath)
+                    watch_file(enriched_filepath)
+            return dfs
         return wrapper
     return decorator
 

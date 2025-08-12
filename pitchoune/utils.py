@@ -161,7 +161,12 @@ def replace_by_module_name_if_only_extension(filepath: str):
 def load_from_conf(key: str, filename: str = None, default_value: Any = None) -> Any:
     """Load a value from a configuration file, or return default if not found or empty."""
     if not filename:
-        filename = os.getenv("PITCHOUNE_WORKDIR") + "\\.conf"
+        workdir = os.getenv("PITCHOUNE_WORKDIR")
+        if not workdir:
+            print("Error: PITCHOUNE_WORKDIR environment variable is not set.")
+            return default_value
+        filename = os.path.join(workdir, ".conf")
+
     try:
         with open(filename, "r") as file:
             for line in file:
@@ -174,7 +179,10 @@ def load_from_conf(key: str, filename: str = None, default_value: Any = None) ->
                         v = v.strip()
                         return v if v else default_value
     except FileNotFoundError:
-        print("Error: .conf file not found !")
+        print(f"Error: Configuration file not found at {filename}")
+    except ValueError as ve:
+        print(f"ValueError while opening file: {ve}")
+
     return default_value
 
 

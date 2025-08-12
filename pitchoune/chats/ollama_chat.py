@@ -1,5 +1,3 @@
-import ollama
-
 from pitchoune.chat import Chat
 
 
@@ -10,6 +8,7 @@ class OllamaChat(Chat):
 
     def send_msg(self, text: str) -> str:
         """Send a message to the chat and return the response."""
+        import ollama
         return ollama.chat(
             model=self._model,
             messages=[

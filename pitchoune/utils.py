@@ -9,7 +9,6 @@ import subprocess
 import platform
 from typing import Any, Generator
 
-from rapidfuzz.distance import Levenshtein
 import polars as pl
 
 
@@ -93,6 +92,7 @@ def anonymize(text: str) -> str:
 
 def percentage_difference(str1: str, str2: str) -> float:
     """Calculate the percentage difference between two strings using Levenshtein distance."""
+    from rapidfuzz.distance import Levenshtein
     max_len = max(len(str1), len(str2))
     if max_len == 0:
         return 0  # Avoid division by zero

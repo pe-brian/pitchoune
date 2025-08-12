@@ -1,14 +1,12 @@
-import os
-from openai import OpenAI
-
 from pitchoune.chat import Chat
 
 
 openai = None
 try:
+    from openai import OpenAI
     openai = OpenAI()
 except ImportError:
-    pass
+    print("Error: Cannot find openai library ! Please install it to be able to use OpenAIChat.")
 
 
 class OpenAIChat(Chat):

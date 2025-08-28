@@ -106,9 +106,19 @@ def replace_home_token_by_home_path(path: str) -> str:
     return path.replace("<HOME>", get_home_path())
 
 
+def replace_name_token_by_workdir_name(path: str) -> str:
+    """Replace <NAME> by workdir name"""
+    return path.replace("<NAME>", get_workdir_name())
+
+
 def get_home_path() -> str:
     """Get the home path"""
     return str(Path.home())
+
+
+def get_workdir_name() -> str:
+    """Get the home path"""
+    return str(Path(os.getenv("PITCHOUNE_WORKDIR")).name)
 
 
 def extract_subfolder_contents(parent_folder: str) -> None:
@@ -158,30 +168,28 @@ def replace_by_module_name_if_only_extension(filepath: str):
     return (get_main_module_name() + filepath) if is_only_extension(filepath) else filepath
 
 
-def load_from_conf(key: str, filename: str = None, default_value: Any = None) -> Any:
+def load_from_conf(key: str, conf_path: str = None, default_value: Any = None) -> Any:
     """Load a value from a configuration file, or return default if not found or empty."""
-    if not filename:
-        workdir = os.getenv("PITCHOUNE_WORKDIR")
-        if not workdir:
-            print("Error: PITCHOUNE_WORKDIR environment variable is not set.")
-            return default_value
-        filename = os.path.join(workdir, ".conf")
+    workdir_path = os.getenv("PITCHOUNE_WORKDIR")
+    workdir_conf_path = None
+    if workdir_path:
+        workdir_conf_path = os.path.join(workdir_path, ".conf")
 
-    try:
-        with open(filename, "r") as file:
-            for line in file:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    if k.strip() == key:
-                        v = v.strip()
-                        return v if v else default_value
-    except FileNotFoundError:
-        print(f"Error: Configuration file not found at {filename}")
-    except ValueError as ve:
-        print(f"ValueError while opening file: {ve}")
+    global_conf_path = os.getenv("GLOBAL_CONF_PATH")
+
+    for f in (conf_path, workdir_conf_path, global_conf_path):  # try in order : specific conf file, workdir one or global one
+        if f:
+            with open(f, "r") as file:
+                for line in file:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        if k.strip() == key:
+                            v = v.strip()
+                            return v if v else default_value
+    print(f"Error: Key {key} not found in .conf files")
 
     return default_value
 
@@ -194,6 +202,7 @@ def enrich_path(path: str | Path) -> str:
         print(f"Error: Unable to find key '{path.removeprefix("conf:")}' in .conf file !")
         return
     p = replace_home_token_by_home_path(p)
+    p = replace_name_token_by_workdir_name(p)
     p = replace_by_module_name_if_only_extension(p)
     p = complete_path_with_workdir(p)
     return p

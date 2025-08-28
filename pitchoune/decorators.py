@@ -69,15 +69,16 @@ def output_dfs(*outputs: dict[str, Any]):
             if len(dfs) != len(outputs):
                 raise ValueError("Number of outputs must match number of returned DataFrames")
             for df, output_params in zip(dfs, outputs):
-                filepath = output_params.pop("filepath")
-                enriched_filepath = enrich_path(filepath)
-                if enriched_filepath:
-                    human_check = output_params.pop("human_check", False)
-                    suffix = enriched_filepath.suffix[1:]
-                    base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
-                    if human_check:
-                        open_file(enriched_filepath)
-                        watch_file(enriched_filepath)
+                if df is not None:
+                    filepath = output_params.pop("filepath")
+                    enriched_filepath = enrich_path(filepath)
+                    if enriched_filepath:
+                        human_check = output_params.pop("human_check", False)
+                        suffix = enriched_filepath.suffix[1:]
+                        base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
+                        if human_check:
+                            open_file(enriched_filepath)
+                            watch_file(enriched_filepath)
             return dfs
         return wrapper
     return decorator

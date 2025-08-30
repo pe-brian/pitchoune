@@ -157,3 +157,21 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
             return func(*args, **kwargs)  # Injection of the chat instance into the function
         return wrapper
     return decorator
+
+
+def requested(*path: str):
+    """Decorator to check if the path exists"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for p in path:
+                ep = enrich_path(p)
+                if not p.startswith("conf:"):
+                    if not Path(p).exists():
+                        raise Exception(f"Requested file or dir not found at : {ep}")
+                else:
+                    if ep is None:
+                        raise Exception(f"Requested conf key / value not found for key : {p.removeprefix("conf:")}")
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

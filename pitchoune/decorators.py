@@ -159,6 +159,20 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
     return decorator
 
 
+def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None, local: bool=True):
+    """Decorator for injecting a chat instance into a function"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            new_prompt = prompt  # Get the prompt from the decorator
+            if new_prompt is None:
+                with open(enrich_path(prompt_filepath), "r") as f:
+                    new_prompt = f.read()
+            kwargs[name] = base_chat_factory.create(name=name, model=model, prompt=new_prompt, local=local)  # Get the chat instance
+            return func(*args, **kwargs)  # Injection of the chat instance into the function
+        return wrapper
+    return decorator
+
 def requested(*paths: str):
     """
         Decorator to check if the given paths exist or are valid config keys.
@@ -172,6 +186,10 @@ def requested(*paths: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            class RequirementsNotSatisfied(Exception):
+                def __init__(self, message="Requirements not satisfied"):
+                    super().__init__(message)
+
             for entry in paths:
                 
                 if isinstance(entry, dict):
@@ -185,13 +203,12 @@ def requested(*paths: str):
 
                 if to_check.startswith("conf:"):
                     if enriched is None:
-                        key = to_check.removeprefix("conf:")
-                        raise KeyError(f"Missing config key or value for: {key}")
+                        raise RequirementsNotSatisfied(f"Missing config key or value for {to_check}")
                     if is_path and not Path(enriched).exists():
-                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
+                        raise RequirementsNotSatisfied(f"Missing file or directory at {enriched} for {to_check}")
                 else:
                     if not Path(enriched).exists():
-                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
+                        raise RequirementsNotSatisfied(f"Missing file or directory at {enriched}")
             return func(*args, **kwargs)
         return wrapper
     return decorator

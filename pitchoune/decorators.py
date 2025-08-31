@@ -222,9 +222,22 @@ def conf_value(key: str, is_path: bool=False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-                val = enrich_path("conf:" + key) if is_path else load_from_conf(key)
-                new_args = args + (val,)
-                return func(*new_args, **kwargs)
+            val = enrich_path("conf:" + key) if is_path else load_from_conf(key)
+            new_args = args + (val,)
+            return func(*new_args, **kwargs)
         return wrapper
     return decorator
 
+
+def path(value: str):
+    """
+        Decorator get a conf value from conf key
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            enriched = enrich_path(value)
+            new_args = args + (enriched,)
+            return func(*new_args, **kwargs)
+        return wrapper
+    return decorator

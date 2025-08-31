@@ -159,19 +159,39 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
     return decorator
 
 
-def requested(*path: str):
-    """Decorator to check if the path exists"""
+def requested(*paths: str):
+    """
+        Decorator to check if the given paths exist or are valid config keys.
+        Example:
+            @requested(
+                "complete/path/to/file/or/directory",
+                "conf:KEY",
+                {"to_check": "conf:PATH", "is_path": True}
+            )
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            for p in path:
-                ep = enrich_path(p)
-                if not p.startswith("conf:"):
-                    if not Path(p).exists():
-                        raise Exception(f"Requested file or dir not found at : {ep}")
+            for entry in paths:
+                
+                if isinstance(entry, dict):
+                    is_path = entry.get("is_path", False)
+                    to_check = entry.get("to_check")
                 else:
-                    if ep is None:
-                        raise Exception(f"Requested conf key / value not found for key : {p.removeprefix("conf:")}")
+                    is_path = True
+                    to_check = entry
+
+                enriched = enrich_path(to_check)
+
+                if to_check.startswith("conf:"):
+                    if is_path and not Path(to_check).exists():
+                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
+                    if enriched is None:
+                        key = to_check.removeprefix("conf:")
+                        raise KeyError(f"Missing config key or value for: {key}")
+                else:
+                    if not Path(to_check).exists():
+                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
             return func(*args, **kwargs)
         return wrapper
     return decorator

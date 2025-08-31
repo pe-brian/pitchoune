@@ -184,11 +184,11 @@ def requested(*paths: str):
                 enriched = enrich_path(to_check)
 
                 if to_check.startswith("conf:"):
-                    if is_path and not Path(enriched).exists():
-                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
                     if enriched is None:
                         key = to_check.removeprefix("conf:")
                         raise KeyError(f"Missing config key or value for: {key}")
+                    if is_path and not Path(enriched).exists():
+                        raise FileNotFoundError(f"Missing file or directory at: {enriched}")
                 else:
                     if not Path(enriched).exists():
                         raise FileNotFoundError(f"Missing file or directory at: {enriched}")

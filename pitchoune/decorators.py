@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 from pitchoune.utils import (
     enrich_path,
+    load_from_conf,
     open_file,
     check_duplicates,
     watch_file
@@ -212,3 +213,18 @@ def requested(*paths: str):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def conf_value(key: str, is_path: bool=False):
+    """
+        Decorator get a conf value from conf key
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+                val = enrich_path("conf:" + key) if is_path else load_from_conf(key)
+                new_args = args + (val,)
+                return func(*new_args, **kwargs)
+        return wrapper
+    return decorator
+

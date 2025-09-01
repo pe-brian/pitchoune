@@ -174,6 +174,12 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
         return wrapper
     return decorator
 
+
+class RequirementsNotSatisfied(Exception):
+    def __init__(self, message="Requirements not satisfied"):
+        super().__init__(message)
+
+
 def requested(*paths: str):
     """
         Decorator to check if the given paths exist or are valid config keys.
@@ -187,9 +193,6 @@ def requested(*paths: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            class RequirementsNotSatisfied(Exception):
-                def __init__(self, message="Requirements not satisfied"):
-                    super().__init__(message)
 
             for entry in paths:
                 
@@ -215,14 +218,14 @@ def requested(*paths: str):
     return decorator
 
 
-def conf_value(key: str, is_path: bool=False):
+def conf_value(key: str, is_path: bool=False, default_value: Any=None):
     """
         Decorator get a conf value from conf key
     """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            val = enrich_path("conf:" + key) if is_path else load_from_conf(key)
+            val = enrich_path("conf:" + key) if is_path else load_from_conf(key, default_value=default_value)
             new_args = args + (val,)
             return func(*new_args, **kwargs)
         return wrapper
@@ -238,6 +241,22 @@ def path(value: str):
         def wrapper(*args, **kwargs):
             enriched = enrich_path(value)
             new_args = args + (enriched,)
+            return func(*new_args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def prompt(value: str):
+    """
+        Decorator get a conf value from conf key
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            enriched = enrich_path(value)
+            with open(enriched, "r", encoding="utf8") as prompt_file:
+                prompt = prompt_file.read()
+            new_args = args + (prompt,)
             return func(*new_args, **kwargs)
         return wrapper
     return decorator

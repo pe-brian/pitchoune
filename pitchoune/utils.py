@@ -214,3 +214,78 @@ def enrich_path(path: str | Path) -> str:
 def get_main_module_name() -> str:
     """Get the name of the main module (script) without the file extension."""
     return os.path.splitext(os.path.basename(sys.modules["__main__"].__file__))[0]
+
+
+import functools
+from pathlib import Path
+
+class RequirementsNotSatisfied(Exception):
+    """Raised when one or more required conditions are not met."""
+    pass
+
+def requested(*checks: str):
+    """
+    Decorator to validate paths or config keys before executing the function.
+
+    Accepted prefixes:
+        - "path:"       → must be an existing file or directory
+        - "conf_path:"  → config key whose value is a path that must exist
+        - "conf:"       → config key must exist and be non-empty
+        - "conf_int:"   → config key must be an integer
+        - "conf_float:" → config key must be a float
+        - "conf_list:"  → config key must be a comma-separated list
+
+    Example:
+        @requested("path:/some/file", "conf:API_KEY", "conf_int:MAX_RETRIES")
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for check in checks:
+                if ":" not in check:
+                    raise RequirementsNotSatisfied(f"Invalid check format: '{check}' (missing prefix)")
+
+                prefix, key = check.split(":", 1)
+
+                # For config keys, retrieve raw value
+                if prefix.startswith("conf"):
+                    value = load_from_conf(key)  # Hypothetical function to fetch config values
+                else:
+                    value = key  # raw path string
+
+                # Enrich only if it's a path
+                if prefix in ("path", "conf_path"):
+                    enriched = enrich_path(value)
+                    if not enriched or not Path(enriched).exists():
+                        raise RequirementsNotSatisfied(f"Missing file or directory at: {enriched} (check: {check})")
+
+                elif prefix == "conf":
+                    if value in [None, "", []]:
+                        raise RequirementsNotSatisfied(f"Missing or empty config value for: {key}")
+
+                elif prefix == "conf_int":
+                    try:
+                        if int(value) != float(value):  # avoid floats like "3.0"
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid integer: {value}")
+
+                elif prefix == "conf_float":
+                    try:
+                        float(value)
+                    except (TypeError, ValueError):
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid float: {value}")
+
+                elif prefix == "conf_list":
+                    if not isinstance(value, str) or not value.strip():
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid list string")
+                    items = [item.strip() for item in value.split(",") if item.strip()]
+                    if not items:
+                        raise RequirementsNotSatisfied(f"Config list for '{key}' is empty or malformed")
+
+                else:
+                    raise RequirementsNotSatisfied(f"Unknown check prefix: '{prefix}' in '{check}'")
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

@@ -176,87 +176,69 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
 
 
 class RequirementsNotSatisfied(Exception):
-    def __init__(self, message="Requirements not satisfied"):
-        super().__init__(message)
+    """Raised when one or more required conditions are not met."""
+    pass
 
-
-def requested(*paths: str):
+def requested(*checks: str):
     """
-        Decorator to check if the given paths exist or are valid config keys.
-        Example:
-            @requested(
-                "complete/path/to/file/or/directory",
-                "conf:KEY",
-                {"to_check": "conf:PATH", "is_path": True}
-            )
+    Decorator to validate paths or config keys before executing the function.
+
+    Accepted prefixes:
+        - "path:"       → must be an existing file or directory
+        - "conf_path:"  → config key whose value is a path that must exist
+        - "conf:"       → config key must exist and be non-empty
+        - "conf_int:"   → config key must be an integer
+        - "conf_float:" → config key must be a float
+        - "conf_list:"  → config key must be a comma-separated list
+
+    Example:
+        @requested("path:/some/file", "conf:API_KEY", "conf_int:MAX_RETRIES")
     """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            for check in checks:
+                if ":" not in check:
+                    raise RequirementsNotSatisfied(f"Invalid check format: '{check}' (missing prefix)")
 
-            for entry in paths:
-                
-                if isinstance(entry, dict):
-                    is_path = entry.get("is_path", False)
-                    to_check = entry.get("to_check")
+                prefix, key = check.split(":", 1)
+
+                # For config keys, retrieve raw value
+                value = load_from_conf(key) if prefix.startswith("conf") else key
+
+                # Enrich only if it's a path
+                if prefix in ("path", "conf_path"):
+                    enriched = enrich_path(value)
+                    if not enriched or not Path(enriched).exists():
+                        raise RequirementsNotSatisfied(f"Missing file or directory at: {enriched} (check: {check})")
+
+                elif prefix == "conf":
+                    if value in [None, "", []]:
+                        raise RequirementsNotSatisfied(f"Missing or empty config value for: {key}")
+
+                elif prefix == "conf_int":
+                    try:
+                        if int(value) != float(value):  # avoid floats like "3.0"
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid integer: {value}")
+
+                elif prefix == "conf_float":
+                    try:
+                        float(value)
+                    except (TypeError, ValueError):
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid float: {value}")
+
+                elif prefix == "conf_list":
+                    if not isinstance(value, str) or not value.strip():
+                        raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid list string")
+                    items = [item.strip() for item in value.split(",") if item.strip()]
+                    if not items:
+                        raise RequirementsNotSatisfied(f"Config list for '{key}' is empty or malformed")
+
                 else:
-                    is_path = True
-                    to_check = entry
+                    raise RequirementsNotSatisfied(f"Unknown check prefix: '{prefix}' in '{check}'")
 
-                enriched = enrich_path(to_check)
-
-                if to_check.startswith("conf:"):
-                    if enriched is None:
-                        raise RequirementsNotSatisfied(f"Missing config key or value for {to_check}")
-                    if is_path and not Path(enriched).exists():
-                        raise RequirementsNotSatisfied(f"Missing file or directory at {enriched} for {to_check}")
-                else:
-                    if not Path(enriched).exists():
-                        raise RequirementsNotSatisfied(f"Missing file or directory at {enriched}")
             return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def conf_value(key: str, is_path: bool=False, default_value: Any=None):
-    """
-        Decorator get a conf value from conf key
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            val = enrich_path("conf:" + key) if is_path else load_from_conf(key, default_value=default_value)
-            new_args = args + (val,)
-            return func(*new_args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def path(value: str):
-    """
-        Decorator get a conf value from conf key
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            enriched = enrich_path(value)
-            new_args = args + (enriched,)
-            return func(*new_args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def prompt(value: str):
-    """
-        Decorator get a conf value from conf key
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            enriched = enrich_path(value)
-            with open(enriched, "r", encoding="utf8") as prompt_file:
-                prompt = prompt_file.read()
-            new_args = args + (prompt,)
-            return func(*new_args, **kwargs)
         return wrapper
     return decorator

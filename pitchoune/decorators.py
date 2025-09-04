@@ -32,12 +32,10 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, *
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            enriched_filepath = enrich_path(filepath)
-            df = None
-            if enriched_filepath:
-                df = base_io_factory.create(suffix=enriched_filepath.suffix[1:]).deserialize(enriched_filepath, schema, **params)
-                if id_cols:
-                    check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
+            new_filepath = Path(filepath)
+            df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
+            if id_cols:
+                check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
             new_args = args + (df,)
             return func(*new_args, **kwargs)
         return wrapper
@@ -49,14 +47,12 @@ def output_df(filepath: Path|str, human_check: bool=False, **params):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            enriched_filepath = enrich_path(filepath)
-            df = None
-            if enriched_filepath:
-                df = func(*args, **kwargs)
-                base_io_factory.create(suffix=enriched_filepath.suffix[1:]).serialize(df, enriched_filepath, **params)
-                if human_check:
-                    open_file(enriched_filepath)  # Open the file for modification
-                    watch_file(enriched_filepath)  # Wait for the file to be modified
+            new_filepath = Path(filepath)
+            df = func(*args, **kwargs)
+            base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(df, new_filepath, **params)
+            if human_check:
+                open_file(new_filepath)  # Open the file for modification
+                watch_file(new_filepath)  # Wait for the file to be modified
             return df
         return wrapper
     return decorator
@@ -87,23 +83,21 @@ def output_dfs(*outputs: dict[str, Any]):
                 if not filepath:
                     raise ValueError("Missing 'filepath' in output parameters")
 
-                enriched_filepath = enrich_path(filepath)
-                if not enriched_filepath:
-                    raise RequirementsNotSatisfied(f"Invalid path: {filepath}")
+                new_filepath = Path(filepath)
 
                 human_check = output_params.pop("human_check", False)
-                suffix = enriched_filepath.suffix[1:]
-                base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
+                suffix = new_filepath.suffix[1:]
+                base_io_factory.create(suffix=suffix).serialize(df, new_filepath, **output_params)
 
                 if human_check:
-                    open_file(enriched_filepath)
-                    watch_file(enriched_filepath)
+                    open_file(new_filepath)
+                    watch_file(new_filepath)
             return dfs
         return wrapper
     return decorator
 
 
-def read_stream_(filepath: Path | str, recover_progress_from: Path | str = None):
+def read_stream_(filepath: Path | str, recover_progress_filepath: Path | str = None):
     """
     Decorator that streams a .jsonl or .csv file line by line and injects the parsed data into the function.
 
@@ -115,20 +109,17 @@ def read_stream_(filepath: Path | str, recover_progress_from: Path | str = None)
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            enriched_path = enrich_path(filepath)
-            if not enriched_path or not Path(enriched_path).exists():
-                raise RequirementsNotSatisfied(f"Unable to read data from '{filepath}'")
+            new_filepath = Path(filepath)
 
             # Count total lines
-            with open(enriched_path, "r", encoding="utf-8") as f:
+            with open(new_filepath, "r", encoding="utf-8") as f:
                 total_lines = sum(1 for _ in f)
 
             # Determine how many lines to skip (recover progress)
             already_done = 0
-            if recover_progress_from:
+            if recover_progress_filepath:
                 try:
-                    progress_path = enrich_path(recover_progress_from)
-                    with open(progress_path, "r", encoding="utf-8") as f:
+                    with open(recover_progress_filepath, "r", encoding="utf-8") as f:
                         already_done = sum(1 for _ in f) - 1  # Ignore header if CSV
                         already_done = max(already_done, 0)
                 except FileNotFoundError:
@@ -144,8 +135,8 @@ def read_stream_(filepath: Path | str, recover_progress_from: Path | str = None)
                     injected_kwargs["total_lines"] = total_lines
                 func(*args, **injected_kwargs)
 
-            suffix = enriched_path.suffix.lower()
-            with open(enriched_path, "r", encoding="utf-8") as f:
+            suffix = new_filepath.suffix.lower()
+            with open(new_filepath, "r", encoding="utf-8") as f:
                 if suffix == ".jsonl":
                     for current_line, line in enumerate(f, start=1):
                         if current_line <= already_done:
@@ -174,24 +165,22 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            new_filepath = Path(filepath)
             already_done = 0
-            enriched_filepath = enrich_path(filepath)
-            if not enriched_filepath:
-                raise Exception("Unable to read data from '{filepath}' !")
-            with open(enriched_filepath, "r", encoding="utf-8") as f:  # Compute the total number of lines
+            with open(new_filepath, "r", encoding="utf-8") as f:  # Compute the total number of lines
                 total_lines = sum(1 for _ in f)
             if recover_progress_from:
                 try:
-                    with open(enrich_path(recover_progress_from), "r", encoding="utf-8") as f:
+                    with open(recover_progress_from, "r", encoding="utf-8") as f:
                         already_done = sum(1 for _ in f)
                 except FileNotFoundError:
                     already_done = 0
-            with open(enriched_filepath, "r", encoding="utf-8") as f:  # Reading and processing the JSONL file
+            with open(new_filepath, "r", encoding="utf-8") as f:  # Reading and processing the JSONL file
                 for current_line, line in enumerate(f, start=1):
                     if already_done > 0:
                         if current_line <= already_done:
                             continue  # Skip lines until we reach the desired start line
-                    if enriched_filepath.suffix == ".jsonl":
+                    if new_filepath.suffix == ".jsonl":
                         data = json.loads(line)  # Cast the line to a dictionary
                         kwargs |= data
                         if "total_lines" in inspect.signature(func).parameters:
@@ -207,16 +196,13 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
 
 def write_stream_(filepath: Path | str):
     """
-    Decorator that writes the returned dictionary to a .jsonl or .csv file line by line.
-
-    The decorated function must return a dictionary.
+        Decorator that writes the returned dictionary to a .jsonl or .csv file line by line.
+        The decorated function must return a dictionary.
     """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            enriched_filepath = enrich_path(filepath)
-            if not enriched_filepath or not Path(enriched_filepath).suffix in [".jsonl", ".csv"]:
-                raise RequirementsNotSatisfied(f"Unsupported file format for streaming: '{filepath}'")
+            new_filepath = Path(filepath)
 
             data = func(*args, **kwargs)
             if data is None:
@@ -226,17 +212,19 @@ def write_stream_(filepath: Path | str):
                 if not isinstance(entry, dict):
                     raise ValueError("La fonction décorée doit retourner un dictionnaire.")
 
-                if enriched_filepath.suffix == ".jsonl":
-                    with open(enriched_filepath, "a", encoding="utf-8") as f:
+                if new_filepath.suffix == ".jsonl":
+                    with open(new_filepath, "a", encoding="utf-8") as f:
                         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-                elif enriched_filepath.suffix == ".csv":
-                    file_exists = Path(enriched_filepath).exists()
-                    with open(enriched_filepath, "a", encoding="utf-8", newline="") as f:
+                elif new_filepath.suffix == ".csv":
+                    file_exists = new_filepath.exists()
+                    with open(new_filepath, "a", encoding="utf-8", newline="") as f:
                         writer = csv.DictWriter(f, fieldnames=entry.keys())
                         if not file_exists:
                             writer.writeheader()
                         writer.writerow(entry)
+                else:
+                    raise Exception("Unsupported file format for streaming")
 
             write_line(data)
             return data
@@ -249,15 +237,14 @@ def write_stream(filepath: Path|str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            enriched_filepath = enrich_path(filepath)
-            if not enriched_filepath:
-                raise Exception("Unable to write data to '{filepath}' !")
+            new_filepath = Path(filepath)
+
             data = func(*args, **kwargs)  # Calling the decorated function
             if data is None:
                 return data
             if isinstance(data, dict):  # Check if the returned value is a dictionary
-                with open(enriched_filepath, "a", encoding="utf-8") as f:
-                    if enriched_filepath.suffix == ".jsonl":
+                with open(new_filepath, "a", encoding="utf-8") as f:
+                    if new_filepath.suffix == ".jsonl":
                         f.write(json.dumps(data, ensure_ascii=False) + "\n")
                     else:
                         raise Exception("File can't receive stream")
@@ -282,9 +269,10 @@ def use_chat(
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            new_prompt_filepath = Path(prompt_filepath)
             new_prompt = prompt  # Get the prompt from the decorator
             if new_prompt is None:
-                with open(enrich_path(prompt_filepath), "r") as f:
+                with open(new_prompt_filepath, "r") as f:
                     new_prompt = f.read()
             kwargs[name] = base_chat_factory.create(
                 name=name,
@@ -361,5 +349,45 @@ def requested(*checks: str):
                     raise RequirementsNotSatisfied(f"Unknown check prefix: '{prefix}' in '{check}'")
 
             return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def input_conf_param(
+    key: str
+):
+    """Decorator for injecting a chat instance into a function"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if ":" not in key:
+                prefix = "str"
+            else:
+                prefix, key = key.split(":", 1)
+
+            # For config keys, retrieve raw value
+            value = load_from_conf(key)
+        
+            if prefix == "path":
+                value = enrich_path(value)
+
+            elif prefix == "str":
+                pass
+
+            elif prefix == "conf_int":
+                value = int(value)
+
+            elif prefix == "conf_float":
+                value = float(value)
+
+            elif prefix == "conf_list":
+                value = [v for v in value.split(",") if v]
+
+            else:
+                raise Exception("Invalid prefix")
+
+            new_args = args + (value,)
+
+            return func(*new_args, **kwargs)  # Injection of the chat instance into the function
         return wrapper
     return decorator

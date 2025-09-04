@@ -268,7 +268,16 @@ def write_stream(filepath: Path|str):
     return decorator
 
 
-def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None, local: bool=True):
+def use_chat(
+    name: str,
+    model: str,
+    prompt_filepath: str=None,
+    prompt: str=None,
+    local: bool=True,
+    temperature: float=.5,
+    max_tokens: int=4096,
+    top_p: float=.9
+):
     """Decorator for injecting a chat instance into a function"""
     def decorator(func):
         @functools.wraps(func)
@@ -277,22 +286,15 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
             if new_prompt is None:
                 with open(enrich_path(prompt_filepath), "r") as f:
                     new_prompt = f.read()
-            kwargs[name] = base_chat_factory.create(name=name, model=model, prompt=new_prompt, local=local)  # Get the chat instance
-            return func(*args, **kwargs)  # Injection of the chat instance into the function
-        return wrapper
-    return decorator
-
-
-def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None, local: bool=True):
-    """Decorator for injecting a chat instance into a function"""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            new_prompt = prompt  # Get the prompt from the decorator
-            if new_prompt is None:
-                with open(enrich_path(prompt_filepath), "r") as f:
-                    new_prompt = f.read()
-            kwargs[name] = base_chat_factory.create(name=name, model=model, prompt=new_prompt, local=local)  # Get the chat instance
+            kwargs[name] = base_chat_factory.create(
+                name=name,
+                model=model,
+                prompt=new_prompt,
+                local=local,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p
+            )  # Get the chat instance
             return func(*args, **kwargs)  # Injection of the chat instance into the function
         return wrapper
     return decorator

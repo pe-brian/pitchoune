@@ -22,6 +22,7 @@ class OllamaChat(Chat):
             ],
             options={
                 "temperature": self._params["temperature"],
-                "max_tokens": self._params["max_tokens"]
+                "max_tokens": self._params["max_tokens"],
+                "top_p": self._params["top_p"],
             }
         ).message.content

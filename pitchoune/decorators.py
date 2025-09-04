@@ -3,6 +3,7 @@ import inspect
 import json
 from pathlib import Path
 from typing import Any, Iterable
+import csv
 
 from pitchoune.utils import (
     enrich_path,
@@ -15,6 +16,15 @@ from pitchoune import (
     base_io_factory,
     base_chat_factory
 )
+
+
+class StreamFormatNotSupported(Exception):
+    """Raised when the file format is not supported for streaming."""
+    pass
+
+class RequirementsNotSatisfied(Exception):
+    """Raised when one or more required conditions are not met."""
+    pass
 
 
 def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, **params):
@@ -70,17 +80,91 @@ def output_dfs(*outputs: dict[str, Any]):
             if len(dfs) != len(outputs):
                 raise ValueError("Number of outputs must match number of returned DataFrames")
             for df, output_params in zip(dfs, outputs):
-                if df is not None:
-                    filepath = output_params.pop("filepath")
-                    enriched_filepath = enrich_path(filepath)
-                    if enriched_filepath:
-                        human_check = output_params.pop("human_check", False)
-                        suffix = enriched_filepath.suffix[1:]
-                        base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
-                        if human_check:
-                            open_file(enriched_filepath)
-                            watch_file(enriched_filepath)
+                if df is None:
+                    continue  # ou raise ValueError("Returned DataFrame is None")
+                
+                filepath = output_params.get("filepath")
+                if not filepath:
+                    raise ValueError("Missing 'filepath' in output parameters")
+
+                enriched_filepath = enrich_path(filepath)
+                if not enriched_filepath:
+                    raise RequirementsNotSatisfied(f"Invalid path: {filepath}")
+
+                human_check = output_params.pop("human_check", False)
+                suffix = enriched_filepath.suffix[1:]
+                base_io_factory.create(suffix=suffix).serialize(df, enriched_filepath, **output_params)
+
+                if human_check:
+                    open_file(enriched_filepath)
+                    watch_file(enriched_filepath)
             return dfs
+        return wrapper
+    return decorator
+
+
+def read_stream_(filepath: Path | str, recover_progress_from: Path | str = None):
+    """
+    Decorator that streams a .jsonl or .csv file line by line and injects the parsed data into the function.
+
+    Injected kwargs:
+        - current_line: line number (starting at 1)
+        - total_lines: total number of lines in the file
+        - parsed data: dict from JSONL or CSV row
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            enriched_path = enrich_path(filepath)
+            if not enriched_path or not Path(enriched_path).exists():
+                raise RequirementsNotSatisfied(f"Unable to read data from '{filepath}'")
+
+            # Count total lines
+            with open(enriched_path, "r", encoding="utf-8") as f:
+                total_lines = sum(1 for _ in f)
+
+            # Determine how many lines to skip (recover progress)
+            already_done = 0
+            if recover_progress_from:
+                try:
+                    progress_path = enrich_path(recover_progress_from)
+                    with open(progress_path, "r", encoding="utf-8") as f:
+                        already_done = sum(1 for _ in f) - 1  # Ignore header if CSV
+                        already_done = max(already_done, 0)
+                except FileNotFoundError:
+                    already_done = 0
+
+            def process_line(data: dict, current_line: int):
+                injected_kwargs = dict(kwargs)
+                injected_kwargs.update(data)
+                sig = inspect.signature(func).parameters
+                if "current_line" in sig:
+                    injected_kwargs["current_line"] = current_line
+                if "total_lines" in sig:
+                    injected_kwargs["total_lines"] = total_lines
+                func(*args, **injected_kwargs)
+
+            suffix = enriched_path.suffix.lower()
+            with open(enriched_path, "r", encoding="utf-8") as f:
+                if suffix == ".jsonl":
+                    for current_line, line in enumerate(f, start=1):
+                        if current_line <= already_done:
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        process_line(data, current_line)
+
+                elif suffix == ".csv":
+                    reader = csv.DictReader(f)
+                    for current_line, row in enumerate(reader, start=1):
+                        if current_line <= already_done:
+                            continue
+                        process_line(row, current_line)
+
+                else:
+                    raise StreamFormatNotSupported(f"Unsupported file format: {suffix}")
         return wrapper
     return decorator
 
@@ -117,6 +201,45 @@ def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
                         func(*args, **kwargs)
                     else:
                         raise Exception("File can't be streamed")
+        return wrapper
+    return decorator
+
+
+def write_stream_(filepath: Path | str):
+    """
+    Decorator that writes the returned dictionary to a .jsonl or .csv file line by line.
+
+    The decorated function must return a dictionary.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            enriched_filepath = enrich_path(filepath)
+            if not enriched_filepath or not Path(enriched_filepath).suffix in [".jsonl", ".csv"]:
+                raise RequirementsNotSatisfied(f"Unsupported file format for streaming: '{filepath}'")
+
+            data = func(*args, **kwargs)
+            if data is None:
+                return None
+
+            def write_line(entry: dict):
+                if not isinstance(entry, dict):
+                    raise ValueError("La fonction décorée doit retourner un dictionnaire.")
+
+                if enriched_filepath.suffix == ".jsonl":
+                    with open(enriched_filepath, "a", encoding="utf-8") as f:
+                        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+                elif enriched_filepath.suffix == ".csv":
+                    file_exists = Path(enriched_filepath).exists()
+                    with open(enriched_filepath, "a", encoding="utf-8", newline="") as f:
+                        writer = csv.DictWriter(f, fieldnames=entry.keys())
+                        if not file_exists:
+                            writer.writeheader()
+                        writer.writerow(entry)
+
+            write_line(data)
+            return data
         return wrapper
     return decorator
 
@@ -174,10 +297,6 @@ def use_chat(name: str, model: str, prompt_filepath: str=None, prompt: str=None,
         return wrapper
     return decorator
 
-
-class RequirementsNotSatisfied(Exception):
-    """Raised when one or more required conditions are not met."""
-    pass
 
 def requested(*checks: str):
     """

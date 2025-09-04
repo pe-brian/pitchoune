@@ -1,5 +1,6 @@
+import functools
 import os
-from pathlib import Path
+import pathlib
 import re
 import shutil
 import sys
@@ -12,6 +13,11 @@ from typing import Any, Generator
 import polars as pl
 
 
+class RequirementsNotSatisfied(Exception):
+    """Raised when one or more required conditions are not met."""
+    pass
+
+
 # polars functions
 
 def check_duplicates(df: pl.DataFrame, *id_cols: str) -> None:
@@ -21,14 +27,14 @@ def check_duplicates(df: pl.DataFrame, *id_cols: str) -> None:
         raise ValueError(f"Des doublons ont été trouvés :\n{duplicates}")
 
 
-def to_path(value: Path|str) -> Path:
-    """Cast a string to a Path object if it's a string."""
-    return value if isinstance(value, Path) else Path(value)
+def to_path(value: pathlib.Path|str) -> pathlib.Path:
+    """Cast a string to a pathlib.Path object if it's a string."""
+    return value if isinstance(value, pathlib.Path) else pathlib.Path(value)
 
 
 # files functions
 
-def replace_in_file(filepath: Path, repl_mapping: dict[str, str], file_suffix: str = "~") -> Path:
+def replace_in_file(filepath: pathlib.Path, repl_mapping: dict[str, str], file_suffix: str = "~") -> pathlib.Path:
     """Replace expressions in a file and save the result to a new file."""
     with open(str(filepath), "r", encoding="utf8") as f:
         data = f.read()
@@ -40,7 +46,7 @@ def replace_in_file(filepath: Path, repl_mapping: dict[str, str], file_suffix: s
     return new_filepath
 
 
-def unzip(zip_filepath: Path|str) -> str:
+def unzip(zip_filepath: pathlib.Path|str) -> str:
     """Unzips a .zip file and returns the path to the extracted folder."""
     destination_folder = os.path.splitext(zip_filepath)[0]  # Remove the .zip extension
     with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:  # Extract the zip file into the destination folder
@@ -113,12 +119,12 @@ def replace_name_token_by_workdir_name(path: str) -> str:
 
 def get_home_path() -> str:
     """Get the home path"""
-    return str(Path.home())
+    return str(pathlib.Path.home())
 
 
 def get_workdir_name() -> str:
     """Get the home path"""
-    return str(Path(os.getenv("PITCHOUNE_WORKDIR")).name)
+    return str(pathlib.Path(os.getenv("PITCHOUNE_WORKDIR")).name)
 
 
 def extract_subfolder_contents(parent_folder: str) -> None:
@@ -131,11 +137,11 @@ def extract_subfolder_contents(parent_folder: str) -> None:
         os.rmdir(subfolder_path)  # Remove the now-empty subfolder
 
 
-def iter_all_files(root_folder: Path|str) -> Generator[Path, None, None]:
+def iter_all_files(root_folder: pathlib.Path|str) -> Generator[pathlib.Path, None, None]:
     """Recursively yields file paths inside subdirectories of `root_folder`."""
     for folder, _, files in os.walk(root_folder):
         for file in files:
-            yield Path(os.path.join(folder, file))  # Yield file paths one by one
+            yield pathlib.Path(os.path.join(folder, file))  # Yield file paths one by one
 
 
 def is_only_extension(path) -> bool:
@@ -145,12 +151,12 @@ def is_only_extension(path) -> bool:
 
 def change_suffix(filepath: str, new_suffix: str):
     """Change the file extension while preserving the original name."""
-    filepath = Path(filepath)
+    filepath = pathlib.Path(filepath)
     filepath = filepath.with_suffix(new_suffix)
     return filepath
 
 
-def complete_path_with_workdir(filepath: str|Path) -> Path:
+def complete_path_with_workdir(filepath: str|pathlib.Path) -> pathlib.Path:
     """Complete the file path with the pitchoune working directory."""
     workdir = os.getenv("PITCHOUNE_WORKDIR")
     return workdir / to_path(filepath) if workdir and not os.path.isabs(filepath) else to_path(filepath)
@@ -194,7 +200,7 @@ def load_from_conf(key: str, conf_path: str = None, default_value: Any = None) -
     return default_value
 
 
-def enrich_path(path: str | Path) -> str:
+def enrich_path(path: str | pathlib.Path) -> str:
     """Enrich path"""
     p = str(path)
     p = replace_conf_key_by_conf_value(p)
@@ -208,6 +214,30 @@ def enrich_path(path: str | Path) -> str:
     return p
 
 
+def Path(path: str):
+    return enrich_path(path)
+
+
+def ConfPath(path: str):
+    return enrich_path("conf:" + path)
+
+
+def ConfInt(path: str):
+    return int(enrich_path("conf:" + path))
+
+
+def ConfFloat(path: str):
+    return float(enrich_path("conf:" + path))
+
+
+def ConfList(path: str):
+    return [x.strip() for x in enrich_path("conf:" + path).split(",") if x]
+
+
+def Conf(key: str):
+    return load_from_conf(key)
+
+
 # other functions
 
 
@@ -215,13 +245,6 @@ def get_main_module_name() -> str:
     """Get the name of the main module (script) without the file extension."""
     return os.path.splitext(os.path.basename(sys.modules["__main__"].__file__))[0]
 
-
-import functools
-from pathlib import Path
-
-class RequirementsNotSatisfied(Exception):
-    """Raised when one or more required conditions are not met."""
-    pass
 
 def requested(*checks: str):
     """
@@ -256,7 +279,7 @@ def requested(*checks: str):
                 # Enrich only if it's a path
                 if prefix in ("path", "conf_path"):
                     enriched = enrich_path(value)
-                    if not enriched or not Path(enriched).exists():
+                    if not enriched or not pathlib.Path(enriched).exists():
                         raise RequirementsNotSatisfied(f"Missing file or directory at: {enriched} (check: {check})")
 
                 elif prefix == "conf":

@@ -136,7 +136,7 @@ def read_stream_(filepath: Path | str, recover_progress_filepath: Path | str = N
                 func(*args, **injected_kwargs)
 
             suffix = new_filepath.suffix.lower()
-            with open(new_filepath, "r", encoding="utf-8") as f:
+            with open(new_filepath, "r", encoding="utf-8-sig") as f:
                 if suffix == ".jsonl":
                     for current_line, line in enumerate(f, start=1):
                         if current_line <= already_done:
@@ -148,7 +148,7 @@ def read_stream_(filepath: Path | str, recover_progress_filepath: Path | str = N
                         process_line(data, current_line)
 
                 elif suffix == ".csv":
-                    reader = csv.DictReader(f)
+                    reader = csv.DictReader(f, delimiter=";")
                     for current_line, row in enumerate(reader, start=1):
                         if current_line <= already_done:
                             continue
@@ -218,8 +218,8 @@ def write_stream_(filepath: Path | str):
 
                 elif new_filepath.suffix == ".csv":
                     file_exists = new_filepath.exists()
-                    with open(new_filepath, "a", encoding="utf-8", newline="") as f:
-                        writer = csv.DictWriter(f, fieldnames=entry.keys())
+                    with open(new_filepath, "a", encoding="utf-8-sig", newline="") as f:
+                        writer = csv.DictWriter(f, fieldnames=entry.keys(), delimiter=";")
                         if not file_exists:
                             writer.writeheader()
                         writer.writerow(entry)
@@ -360,13 +360,14 @@ def input_conf_param(
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            if ":" not in key:
+            new_key = key
+            if ":" not in new_key:
                 prefix = "str"
             else:
-                prefix, key = key.split(":", 1)
+                prefix, new_key = new_key.split(":", 1)
 
             # For config keys, retrieve raw value
-            value = load_from_conf(key)
+            value = load_from_conf(new_key)
         
             if prefix == "path":
                 value = enrich_path(value)
@@ -374,13 +375,13 @@ def input_conf_param(
             elif prefix == "str":
                 pass
 
-            elif prefix == "conf_int":
+            elif prefix == "int":
                 value = int(value)
 
-            elif prefix == "conf_float":
+            elif prefix == "float":
                 value = float(value)
 
-            elif prefix == "conf_list":
+            elif prefix == "list":
                 value = [v for v in value.split(",") if v]
 
             else:

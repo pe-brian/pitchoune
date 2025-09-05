@@ -98,7 +98,7 @@ def output_dfs(*outputs: dict[str, Any]):
     return decorator
 
 
-def read_stream_(filepath: Path | str, recover_progress_filepath: Path | str = None):
+def read_stream(filepath: Path | str, recover_progress_filepath: Path | str = None):
     """
     Decorator that streams a .jsonl or .csv file line by line and injects the parsed data into the function.
 
@@ -161,41 +161,7 @@ def read_stream_(filepath: Path | str, recover_progress_filepath: Path | str = N
     return decorator
 
 
-def read_stream(filepath: Path|str, recover_progress_from: Path|str=None):
-    """Decorator that reads a JSONL file line by line and injects the data into the function"""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            new_filepath = Path(filepath)
-            already_done = 0
-            with open(new_filepath, "r", encoding="utf-8") as f:  # Compute the total number of lines
-                total_lines = sum(1 for _ in f)
-            if recover_progress_from:
-                try:
-                    with open(recover_progress_from, "r", encoding="utf-8") as f:
-                        already_done = sum(1 for _ in f)
-                except FileNotFoundError:
-                    already_done = 0
-            with open(new_filepath, "r", encoding="utf-8") as f:  # Reading and processing the JSONL file
-                for current_line, line in enumerate(f, start=1):
-                    if already_done > 0:
-                        if current_line <= already_done:
-                            continue  # Skip lines until we reach the desired start line
-                    if new_filepath.suffix == ".jsonl":
-                        data = json.loads(line)  # Cast the line to a dictionary
-                        kwargs |= data
-                        if "total_lines" in inspect.signature(func).parameters:
-                            kwargs["total_lines"] = total_lines
-                        if "current_line" in inspect.signature(func).parameters:
-                            kwargs["current_line"] = current_line
-                        func(*args, **kwargs)
-                    else:
-                        raise Exception("File can't be streamed")
-        return wrapper
-    return decorator
-
-
-def write_stream_(filepath: Path | str):
+def write_stream(filepath: Path | str):
     """
         Decorator that writes the returned dictionary to a .jsonl or .csv file line by line.
         The decorated function must return a dictionary.
@@ -228,29 +194,6 @@ def write_stream_(filepath: Path | str):
                     raise Exception("Unsupported file format for streaming")
 
             write_line(data)
-            return data
-        return wrapper
-    return decorator
-
-
-def write_stream(filepath: Path|str):
-    """Decorator that writes a dictionary to a JSONL file line by line"""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            new_filepath = Path(filepath)
-
-            data = func(*args, **kwargs)  # Calling the decorated function
-            if data is None:
-                return data
-            if isinstance(data, dict):  # Check if the returned value is a dictionary
-                with open(new_filepath, "a", encoding="utf-8") as f:
-                    if new_filepath.suffix == ".jsonl":
-                        f.write(json.dumps(data, ensure_ascii=False) + "\n")
-                    else:
-                        raise Exception("File can't receive stream")
-            else:
-                raise ValueError("La fonction décorée doit retourner un dictionnaire.")
             return data
         return wrapper
     return decorator
@@ -289,7 +232,7 @@ def use_chat(
     return decorator
 
 
-def requested_(*checks: str):
+def requested(*checks: str):
     """
     Decorator to validate paths or config keys before executing the function.
 

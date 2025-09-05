@@ -2,6 +2,7 @@ import functools
 import inspect
 import json
 from pathlib import Path
+import sys
 from typing import Any, Iterable
 import csv
 
@@ -288,7 +289,7 @@ def use_chat(
     return decorator
 
 
-def requested(*checks: str):
+def requested_(*checks: str):
     """
     Decorator to validate paths or config keys before executing the function.
 
@@ -299,23 +300,23 @@ def requested(*checks: str):
         - "conf_int:"   → config key must be an integer
         - "conf_float:" → config key must be a float
         - "conf_list:"  → config key must be a comma-separated list
-
-    Example:
-        @requested("path:/some/file", "conf:API_KEY", "conf_int:MAX_RETRIES")
+        - "return:"     → function will be called with the result of the decorated function (it must return an str describing the missing requirement if any)
     """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            # Pré-checks avant exécution
             for check in checks:
                 if ":" not in check:
                     raise RequirementsNotSatisfied(f"Invalid check format: '{check}' (missing prefix)")
 
                 prefix, key = check.split(":", 1)
 
-                # For config keys, retrieve raw value
+                if prefix == "return":
+                    continue  # on gère ça après l'exécution
+
                 value = load_from_conf(key) if prefix.startswith("conf") else key
 
-                # Enrich only if it's a path
                 if prefix in ("path", "conf_path"):
                     enriched = enrich_path(value)
                     if not enriched or not Path(enriched).exists():
@@ -327,7 +328,7 @@ def requested(*checks: str):
 
                 elif prefix == "conf_int":
                     try:
-                        if int(value) != float(value):  # avoid floats like "3.0"
+                        if int(value) != float(value):
                             raise ValueError
                     except (TypeError, ValueError):
                         raise RequirementsNotSatisfied(f"Config value for '{key}' is not a valid integer: {value}")
@@ -348,7 +349,28 @@ def requested(*checks: str):
                 else:
                     raise RequirementsNotSatisfied(f"Unknown check prefix: '{prefix}' in '{check}'")
 
-            return func(*args, **kwargs)
+            # Exécution de la fonction décorée
+            result = func(*args, **kwargs)
+
+            # Post-checks sur le résultat
+            for check in checks:
+                prefix, key = check.split(":", 1)
+                if prefix != "return":
+                    continue
+
+                try:
+                    check_func = globals().get(key) or getattr(sys.modules[func.__module__], key)
+                except AttributeError:
+                    raise RequirementsNotSatisfied(f"Function '{key}' not found for return check")
+
+                if not callable(check_func):
+                    raise RequirementsNotSatisfied(f"'{key}' is not a callable function")
+
+                post_result = check_func(result)
+                if post_result is not None:
+                    raise RequirementsNotSatisfied(str(post_result))
+
+            return result
         return wrapper
     return decorator
 

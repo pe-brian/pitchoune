@@ -195,7 +195,7 @@ def load_from_conf(key: str, conf_path: str = None, default_value: Any = None) -
                         if k.strip() == key:
                             v = v.strip()
                             return v if v else default_value
-    print(f"Error: Key {key} not found in .conf files")
+    print(f"Warning: Key {key} not found in .conf files (default value '{default_value}' applied) !")
 
     return default_value
 
@@ -205,7 +205,6 @@ def enrich_path(path: str | pathlib.Path) -> str:
     p = str(path)
     p = replace_conf_key_by_conf_value(p)
     if p == None:
-        print(f"Error: Unable to find key '{path.removeprefix("conf:")}' in .conf file !")
         return
     p = replace_home_token_by_home_path(p)
     p = replace_name_token_by_workdir_name(p)

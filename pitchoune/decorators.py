@@ -33,10 +33,12 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, *
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            new_filepath = Path(filepath)
-            df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
-            if id_cols:
-                check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
+            df = None
+            if filepath is not None:
+                new_filepath = Path(filepath)
+                df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
+                if id_cols:
+                    check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
             new_args = args + (df,)
             return func(*new_args, **kwargs)
         return wrapper
@@ -80,7 +82,7 @@ def output_dfs(*outputs: dict[str, Any]):
                 if df is None:
                     continue  # ou raise ValueError("Returned DataFrame is None")
                 
-                filepath = output_params.get("filepath")
+                filepath = output_params.pop("filepath")
                 if not filepath:
                     raise ValueError("Missing 'filepath' in output parameters")
 
@@ -319,7 +321,8 @@ def requested(*checks: str):
 
 
 def input_conf_param(
-    key: str
+    key: str,
+    default_value: Any = None
 ):
     """Decorator for injecting a chat instance into a function"""
     def decorator(func):
@@ -332,25 +335,30 @@ def input_conf_param(
                 prefix, new_key = new_key.split(":", 1)
 
             # For config keys, retrieve raw value
-            value = load_from_conf(new_key)
-        
-            if prefix == "path":
-                value = enrich_path(value)
+            value = load_from_conf(new_key, default_value=default_value)
 
-            elif prefix == "str":
-                pass
-
-            elif prefix == "int":
-                value = int(value)
-
-            elif prefix == "float":
-                value = float(value)
-
-            elif prefix == "list":
-                value = [v for v in value.split(",") if v]
+            if value is None:
+                value = default_value
 
             else:
-                raise Exception("Invalid prefix")
+        
+                if prefix == "path":
+                    value = enrich_path(value)
+
+                elif prefix == "str":
+                    pass
+
+                elif prefix == "int":
+                    value = int(value)
+
+                elif prefix == "float":
+                    value = float(value)
+
+                elif prefix == "list":
+                    value = [v for v in value.split(",") if v]
+
+                else:
+                    raise Exception("Invalid prefix")
 
             new_args = args + (value,)
 

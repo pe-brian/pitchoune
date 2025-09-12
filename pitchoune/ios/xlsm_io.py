@@ -26,7 +26,7 @@ class XLSM_IO(IO):
 
     def serialize(
         self,
-        df: pl.DataFrame,
+        data: pl.DataFrame | Any,
         filepath: str,
         template: str = None,
         sheet_name: str = "Sheet1",
@@ -34,7 +34,7 @@ class XLSM_IO(IO):
     ) -> None:
         """Write a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any)."""
         import xlwings as xw
-        data = [df.columns] + df.rows()
+        data = [data.columns] + data.rows() if isinstance(data, pl.DataFrame) else data
         # Ouverture Excel invisible pour ne rien casser
         with xw.App(visible=False) as app:
             wb = app.books.open(template if template else filepath, read_only=False, editable=True)

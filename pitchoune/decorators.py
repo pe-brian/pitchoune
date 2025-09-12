@@ -365,3 +365,52 @@ def input_conf_param(
             return func(*new_args, **kwargs)  # Injection of the chat instance into the function
         return wrapper
     return decorator
+
+
+def output(filepath: Path|str=None, human_check: bool=False, **params):
+    """
+        Write the return of the decorated function to a file
+    """
+    
+    # Compteur global pour tous les décorateurs
+    if not hasattr(output, 'counter'):
+        output.counter = 0
+    
+    # Capturer l'index de ce décorateur
+    decorator_index = output.counter
+    output.counter += 1
+    
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if filepath is not None:
+                new_filepath = Path(filepath)
+            
+            res = func(*args, **kwargs)
+            
+            if res is None:
+                return res
+            
+            # Si c'est un tuple, prendre l'élément correspondant à cet index de décorateur
+            if isinstance(res, tuple):
+                # Calculer l'index inversé pour compenser l'ordre d'exécution des décorateurs
+                total_decorators = output.counter
+                inverted_index = total_decorators - 1 - decorator_index
+                
+                if inverted_index < len(res):
+                    selected_res = res[inverted_index]
+                else:
+                    selected_res = res[-1]  # Prendre le dernier élément
+            else:
+                selected_res = res
+            
+            if filepath is not None:
+                base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(data=selected_res, filepath=new_filepath, **params)
+                if human_check:
+                    open_file(new_filepath)
+                    watch_file(new_filepath)
+            
+            # Retourner le tuple original pour que les autres décorateurs puissent aussi l'utiliser
+            return res
+        return wrapper
+    return decorator

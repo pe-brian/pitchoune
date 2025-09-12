@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Any
+import time
 
 import polars as pl
 
 from pitchoune.io import IO
-from pitchoune.utils import enrich_path
 
 
 class XLSM_IO(IO):
@@ -28,7 +28,7 @@ class XLSM_IO(IO):
         self,
         df: pl.DataFrame,
         filepath: str,
-        based_on_filepath: str,
+        template: str = None,
         sheet_name: str = "Sheet1",
         start_ref: str = "A1"
     ) -> None:
@@ -36,12 +36,8 @@ class XLSM_IO(IO):
         import xlwings as xw
         data = [df.columns] + df.rows()
         # Ouverture Excel invisible pour ne rien casser
-        app = xw.App(visible=False)
-        try:
-            wb = app.books.open(enrich_path(based_on_filepath))
+        with xw.App(visible=False) as app:
+            wb = app.books.open(template if template else filepath, read_only=False, editable=True)
             ws = wb.sheets[sheet_name]
             ws.range(start_ref).value = data
             wb.save(filepath)
-            wb.close()
-        finally:
-            app.quit()

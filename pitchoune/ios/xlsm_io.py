@@ -31,24 +31,28 @@ class XLSM_IO(IO):
         template: str = None,
         sheet_name: str = "Sheet1",
         start_ref: str = "A1",
-        sheets: list[dict] = None
+        sheets: list[str] = None
     ) -> None:
         """
             Write a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any).
         """
         import xlwings as xw
+
+        # si df n'est pas une liste
         if isinstance(df, pl.DataFrame) or isinstance(df, str):
-            df = [df]
-            sheets = [{"name": sheet_name, "start_ref": start_ref}]
-            app = xw.App(visible=False)
+            df = (df,)
+            sheets = (f"{sheet_name}:{start_ref}",)
+        
+        with xw.App(visible=False) as app:
             wb = app.books.open(template if template else filepath)
             for item, sheet in zip(df, sheets):
-                ws = wb.sheets[sheet["name"]]
+                name, start_ref = sheet.split(":")
+                ws = wb.sheets[name]
                 if isinstance(item, pl.DataFrame):
-                    ws.range(sheet["start_ref"]).value = [item.columns] + item.rows()
+                    ws.range(start_ref).value = [item.columns] + item.rows()
                 elif isinstance(item, str):
-                    ws.range(sheet["start_ref"]).value = item
+                    ws.range(start_ref).value = item
                 elif isinstance(item, list):
-                    ws.range(sheet["start_ref"]).options(transpose=True).value = item
+                    ws.range(start_ref).options(transpose=True).value = item
             wb.save(filepath)
-            app.quit()
+            wb.close()

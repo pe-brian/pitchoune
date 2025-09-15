@@ -419,7 +419,7 @@ def output(filepath: Path|str=None, human_check: bool=False, **params):
                 selected_res = res
             
             if filepath is not None:
-                base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(selected_res, filepath=new_filepath, **params)
+                base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(df=selected_res, filepath=new_filepath, **params)
                 if human_check:
                     open_file(new_filepath)
                     watch_file(new_filepath)

@@ -367,6 +367,24 @@ def input_conf_param(
     return decorator
 
 
+def input_file(
+    filepath: str | Path,
+    split_lines: bool=False
+):
+    """Decorator for injecting a chat instance into a function"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            with open(filepath, "r", encoding="utf8") as f:
+                value = f.read()
+            if split_lines:
+                value = value.split("\n")
+            new_args = args + (value,)
+            return func(*new_args, **kwargs)  # Injection of the chat instance into the function
+        return wrapper
+    return decorator
+
+
 def output(filepath: Path|str=None, human_check: bool=False, **params):
     """
         Write the return of the decorated function to a file
@@ -396,16 +414,12 @@ def output(filepath: Path|str=None, human_check: bool=False, **params):
                 # Calculer l'index inversé pour compenser l'ordre d'exécution des décorateurs
                 total_decorators = output.counter
                 inverted_index = total_decorators - 1 - decorator_index
-                
-                if inverted_index < len(res):
-                    selected_res = res[inverted_index]
-                else:
-                    selected_res = res[-1]  # Prendre le dernier élément
+                selected_res = res[inverted_index if inverted_index < len(res) else -1]
             else:
                 selected_res = res
             
             if filepath is not None:
-                base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(data=selected_res, filepath=new_filepath, **params)
+                base_io_factory.create(suffix=new_filepath.suffix[1:]).serialize(selected_res, filepath=new_filepath, **params)
                 if human_check:
                     open_file(new_filepath)
                     watch_file(new_filepath)

@@ -26,18 +26,29 @@ class XLSM_IO(IO):
 
     def serialize(
         self,
-        data: pl.DataFrame | Any,
+        df: pl.DataFrame | str | list[pl.DataFrame | str],
         filepath: str,
         template: str = None,
         sheet_name: str = "Sheet1",
-        start_ref: str = "A1"
+        start_ref: str = "A1",
+        sheets: list[dict] = None
     ) -> None:
-        """Write a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any)."""
+        """
+            Write a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any).
+        """
         import xlwings as xw
-        data = [data.columns] + data.rows() if isinstance(data, pl.DataFrame) else data
-        # Ouverture Excel invisible pour ne rien casser
-        with xw.App(visible=False) as app:
-            wb = app.books.open(template if template else filepath, read_only=False, editable=True)
-            ws = wb.sheets[sheet_name]
-            ws.range(start_ref).value = data
+        if isinstance(df, pl.DataFrame) or isinstance(df, str):
+            df = [df]
+            sheets = [{"name": sheet_name, "start_ref": start_ref}]
+            app = xw.App(visible=False)
+            wb = app.books.open(template if template else filepath)
+            for item, sheet in zip(df, sheets):
+                ws = wb.sheets[sheet["name"]]
+                if isinstance(item, pl.DataFrame):
+                    ws.range(sheet["start_ref"]).value = [item.columns] + item.rows()
+                elif isinstance(item, str):
+                    ws.range(sheet["start_ref"]).value = item
+                elif isinstance(item, list):
+                    ws.range(sheet["start_ref"]).options(transpose=True).value = item
             wb.save(filepath)
+            app.quit()

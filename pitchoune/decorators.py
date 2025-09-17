@@ -2,6 +2,7 @@ import functools
 import inspect
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any, Iterable
 import csv
@@ -36,9 +37,12 @@ def input_df(filepath: Path|str, id_cols: Iterable[str] = None, schema = None, *
             df = None
             if filepath is not None:
                 new_filepath = Path(filepath)
-                df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
-                if id_cols:
-                    check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
+                try:
+                    df = base_io_factory.create(suffix=new_filepath.suffix[1:]).deserialize(new_filepath, schema, **params)
+                    if id_cols:
+                        check_duplicates(df, *id_cols)  # Check for duplicates in the specified columns
+                except FileNotFoundError:
+                    df = None
             new_args = args + (df,)
             return func(*new_args, **kwargs)
         return wrapper
@@ -263,9 +267,10 @@ def requested(*checks: str):
                 value = load_from_conf(key) if prefix.startswith("conf") else key
 
                 if prefix in ("path", "conf_path"):
-                    enriched = enrich_path(value)
-                    if not enriched or not Path(enriched).exists():
-                        raise RequirementsNotSatisfied(f"Missing file or directory at: {enriched} (check: {check})")
+                    if not Path(value).exists():
+                        enriched = enrich_path(value)
+                        if not enriched or not Path(enriched).exists():
+                            raise RequirementsNotSatisfied(f"Missing file or directory at: {enriched} (check: {check})")
 
                 elif prefix == "conf":
                     if value in [None, "", []]:
@@ -311,6 +316,92 @@ def requested(*checks: str):
                 if not callable(check_func):
                     raise RequirementsNotSatisfied(f"'{key}' is not a callable function")
 
+                post_result = check_func(result)
+                if post_result is not None:
+                    raise RequirementsNotSatisfied(str(post_result))
+
+            return result
+        return wrapper
+    return decorator
+
+
+def check_single(check: str) -> bool:
+    if ":" not in check:
+        return False
+    prefix, key = check.split(":", 1)
+    value = load_from_conf(key) if prefix.startswith("conf") else key
+
+    try:
+        if prefix in ("path", "conf_path"):
+            return Path(value).exists() or (enrich_path(value) and Path(enrich_path(value)).exists())
+        elif prefix == "conf":
+            return value not in [None, "", []]
+        elif prefix == "conf_int":
+            return int(value) == float(value)
+        elif prefix == "conf_float":
+            float(value)
+            return True
+        elif prefix == "conf_list":
+            return isinstance(value, str) and bool([v.strip() for v in value.split(",") if v.strip()])
+        else:
+            return False
+    except Exception:
+        return False
+
+
+def evaluate_rule(expr: str) -> bool:
+    expr = expr.strip()
+
+    # Remplacer les checks par des appels à check_single(...)
+    tokens = re.split(r'(\(|\)|\&|\|)', expr)
+    tokens = [t.strip() for t in tokens if t.strip()]
+
+    def parse(tokens):
+        def parse_atom():
+            token = tokens.pop(0)
+            if token == '(':
+                result = parse(tokens)
+                if not tokens or tokens.pop(0) != ')':
+                    raise ValueError("Parenthèse non fermée")
+                return result
+            else:
+                return lambda: check_single(token)
+
+        def parse_and_or():
+            left = parse_atom()
+            while tokens and tokens[0] in ('&', '|'):
+                op = tokens.pop(0)
+                right = parse_atom()
+                if op == '&':
+                    left = (lambda l=left, r=right: l() and r())
+                else:
+                    left = (lambda l=left, r=right: l() or r())
+            return left
+
+        return parse_and_or()
+
+    return parse(tokens)()
+
+
+def requested_(*rules: str):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for rule in rules:
+                if rule.startswith("return:"):
+                    continue
+                if not evaluate_rule(rule):
+                    raise RequirementsNotSatisfied(f"Rule not satisfied: {rule}")
+
+            result = func(*args, **kwargs)
+
+            for rule in rules:
+                if not rule.startswith("return:"):
+                    continue
+                _, check_func_name = rule.split(":", 1)
+                check_func = globals().get(check_func_name) or getattr(sys.modules[func.__module__], check_func_name)
+                if not callable(check_func):
+                    raise RequirementsNotSatisfied(f"'{check_func_name}' is not a callable function")
                 post_result = check_func(result)
                 if post_result is not None:
                     raise RequirementsNotSatisfied(str(post_result))

@@ -185,7 +185,7 @@ def load_from_conf(key: str, conf_path: str = None, default_value: Any = None) -
 
     for f in (conf_path, workdir_conf_path, global_conf_path):  # try in order : specific conf file, workdir one or global one
         if f:
-            with open(f, "r") as file:
+            with open(f, "r", encoding="utf8") as file:
                 for line in file:
                     line = line.strip()
                     if not line or line.startswith("#"):
@@ -218,6 +218,8 @@ def Path(path: str):
 
 
 def ConfPath(path: str):
+    if path.startswith("conf_path:"):
+        raise ValueError("Please remove the prefix 'conf_path:'")
     return enrich_path("conf:" + path)
 
 

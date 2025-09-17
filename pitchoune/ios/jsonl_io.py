@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -14,6 +15,12 @@ class JSONL_IO(IO):
         """Read a JSON Lines file and return a Polars DataFrame."""
         return pl.read_ndjson(str(filepath), schema_overrides=schema)
 
-    def serialize(self, df: pl.DataFrame, filepath: Path|str) -> None:
+    def serialize(self, df: pl.DataFrame | list[Any], filepath: Path|str) -> None:
         """Write a Polars DataFrame to a JSON Lines file."""
-        df.write_ndjson(str(filepath))
+        if isinstance(df, pl.DataFrame):
+            df.write_ndjson(str(filepath))
+        elif isinstance(df, list):
+            import json
+            with open(filepath, "w", encoding="utf-8") as f:
+                for item in df:
+                    f.write(json.dumps(item, ensure_ascii=False) + "\n")

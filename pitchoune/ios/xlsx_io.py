@@ -11,12 +11,13 @@ class XLSX_IO(IO):
     def __init__(self):
         super().__init__(suffix="xlsx")
 
-    def deserialize(self, filepath: Path|str, schema=None, sheet_name: str = "sheet1", engine: str = "openpyxl", read_options: dict[str, Any] = None, **params) -> None:
+    def deserialize(self, filepath: Path|str, schema=None, sheet_name: str = None, engine: str = "openpyxl", read_options: dict[str, Any] = None, **params) -> None:
         """Read an XLSX file and return a Polars DataFrame."""
         return pl.read_excel(
             str(filepath),
             schema_overrides=schema,
             sheet_name=sheet_name,
+            sheet_id=1 if sheet_name is None else None,
             engine=engine,
             read_options=read_options,
             infer_schema_length=10000,

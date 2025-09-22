@@ -119,16 +119,25 @@ def read_stream(filepath: Path | str, recover_progress_filepath: Path | str = No
             new_filepath = Path(filepath)
 
             # Count total lines
-            with open(new_filepath, "r", encoding="utf-8") as f:
-                total_lines = sum(1 for _ in f)
+            if new_filepath.suffix == ".jsonl":
+                with open(new_filepath, "r", encoding="utf-8") as f:
+                    total_lines = sum(1 for _ in f)
+            elif new_filepath.suffix == ".csv":
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    reader = csv.reader(f, delimiter=";")
+                    total_lines = sum(1 for _ in reader)
 
             # Determine how many lines to skip (recover progress)
             already_done = 0
             if recover_progress_filepath:
                 try:
-                    with open(recover_progress_filepath, "r", encoding="utf-8") as f:
-                        already_done = sum(1 for _ in f) - 1  # Ignore header if CSV
-                        already_done = max(already_done, 0)
+                    if recover_progress_filepath.suffix == ".jsonl":
+                        with open(recover_progress_filepath, "r", encoding="utf-8") as f:
+                            already_done = max(sum(1 for _ in f), 0)
+                    elif recover_progress_filepath.suffix == ".csv":
+                        with open(recover_progress_filepath, 'r', encoding='utf-8') as f:
+                            reader = csv.reader(f, delimiter=";")
+                            already_done = max(sum(1 for _ in reader), 0)
                 except FileNotFoundError:
                     already_done = 0
 
@@ -219,9 +228,10 @@ def use_chat(
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            new_prompt_filepath = Path(prompt_filepath)
+            if prompt_filepath:
+                new_prompt_filepath = Path(prompt_filepath)
             new_prompt = prompt  # Get the prompt from the decorator
-            if new_prompt is None:
+            if new_prompt is None and prompt_filepath:
                 with open(new_prompt_filepath, "r") as f:
                     new_prompt = f.read()
             kwargs[name] = base_chat_factory.create(

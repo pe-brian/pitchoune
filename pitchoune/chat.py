@@ -11,6 +11,6 @@ class Chat:
         if not "top_p" in self._params:
             self._params["top_p"] = 1
 
-    def send_msg(self, text: str) -> str:
+    def send_msg(self, text: str, prompt: str = None) -> str:
         """Send a message to the chat and return the response."""
         raise NotImplementedError("send_msg method must be implemented in subclasses")

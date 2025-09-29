@@ -203,9 +203,11 @@ def read_stream(
 
 # Output
 
+
 def output(
     filepath: Path|str=None,
     human_check: bool=False,
+    checks: list=None,
     **params
 ):
     """ Decorator that copies the return of the decorated function to a file
@@ -225,6 +227,12 @@ def output(
                 new_filepath = Path(filepath)
             
             res = func(*args, **kwargs)
+
+            if checks:
+                for check in checks:
+                    ret = res(check)
+                    if ret:
+                        raise RequirementsNotSatisfied(ret)
             
             if res is None:
                 return res

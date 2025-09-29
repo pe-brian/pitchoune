@@ -7,12 +7,24 @@ from pitchoune.io import IO
 
 
 class XLSX_IO(IO):
-    """XLSX IO class for reading and writing XLSX files using Polars."""
-    def __init__(self):
+    """ XLSX IO class that can read and write XLSX files using Polars
+    """
+    def __init__(
+        self
+    ):
         super().__init__(suffix="xlsx")
 
-    def deserialize(self, filepath: Path|str, schema=None, sheet_name: str = None, engine: str = "openpyxl", read_options: dict[str, Any] = None, **params) -> None:
-        """Read an XLSX file and return a Polars DataFrame."""
+    def deserialize(
+        self,
+        filepath: Path|str,
+        schema=None,
+        sheet_name: str = None,
+        engine: str = "openpyxl",
+        read_options: dict[str, Any] = None,
+        **params
+    ) -> None:
+        """ Reads an XLSX file and return a Polars DataFrame
+        """
         return pl.read_excel(
             str(filepath),
             schema_overrides=schema,
@@ -24,6 +36,8 @@ class XLSX_IO(IO):
             **params
         )
 
-    def serialize(self, df: pl.DataFrame, filepath: Path|str, **params) -> None:
-        """Write a Polars DataFrame to an XLSX file."""
+    def serialize(self,
+    df: pl.DataFrame, filepath: Path|str, **params) -> None:
+        """ Writes a Polars DataFrame to an XLSX file
+        """
         df.write_excel(str(filepath), **params)

@@ -1,5 +1,5 @@
 import os
-from pitchoune.decorators import input_df, output_dfs
+from pitchoune.decorators import input_df, output
 
 
 with open("multiple_outputs.csv", "w") as file:
@@ -7,10 +7,8 @@ with open("multiple_outputs.csv", "w") as file:
 
 
 @input_df("multiple_outputs.csv")
-@output_dfs(
-    {"filepath": "a.csv"},
-    {"filepath": "b.csv"}
-)
+@output("a.csv")
+@output("b.csv")
 def main(df):
     return df.select("a"), df.select("b")
 

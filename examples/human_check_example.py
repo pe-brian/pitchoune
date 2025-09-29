@@ -1,5 +1,5 @@
 import os
-from pitchoune.decorators import input_df, output_df
+from pitchoune.decorators import input_df, output
 
 
 with open("not_checked.csv", "w") as file:
@@ -7,7 +7,7 @@ with open("not_checked.csv", "w") as file:
 
 
 @input_df("not_checked.csv")
-@output_df(".xlsx", human_check=True)
+@output(".xlsx", human_check=True)
 def main(df):
     return df
 

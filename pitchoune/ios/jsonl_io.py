@@ -7,16 +7,29 @@ from pitchoune.io import IO
 
 
 class JSONL_IO(IO):
-    """JSONL IO class for reading and writing JSON Lines files using Polars."""
-    def __init__(self):
+    """ JSONL IO class that can read and write JSON Lines files using Polars
+    """
+    def __init__(
+        self
+    ):
         super().__init__(suffix="jsonl")
 
-    def deserialize(self, filepath: Path|str, schema=None) -> pl.DataFrame:
-        """Read a JSON Lines file and return a Polars DataFrame."""
+    def deserialize(
+        self,
+        filepath: Path|str,
+        schema=None
+    ) -> pl.DataFrame:
+        """ Reads a JSON Lines file and return a Polars DataFrame
+        """
         return pl.read_ndjson(str(filepath), schema_overrides=schema)
 
-    def serialize(self, df: pl.DataFrame | list[Any], filepath: Path|str) -> None:
-        """Write a Polars DataFrame to a JSON Lines file."""
+    def serialize(
+        self,
+        df: pl.DataFrame | list[Any],
+        filepath: Path|str
+    ) -> None:
+        """ Writes a Polars DataFrame to a JSON Lines file
+        """
         if isinstance(df, pl.DataFrame):
             df.write_ndjson(str(filepath))
         elif isinstance(df, list):

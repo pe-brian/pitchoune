@@ -1,4 +1,4 @@
-from pitchoune.decorators import input_df, output_df
+from pitchoune.decorators import input_df, output
 from pitchoune import base_io_factory
 
 import polars as pl
@@ -25,7 +25,7 @@ base_io_factory.register("ploup", Ploup_IO)
 
 
 @input_df("data/dummy.ploup")
-@output_df("data/output.ploup")
+@output("data/output.ploup")
 def main(df):
     return df
 

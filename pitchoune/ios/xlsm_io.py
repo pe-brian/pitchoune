@@ -7,12 +7,25 @@ from pitchoune.io import IO
 
 
 class XLSM_IO(IO):
-    """XLSM IO class for reading and writing XLSM files using Polars."""
-    def __init__(self):
+    """ XLSM IO class hat can read and write XLSM files using Polars.
+    """
+    def __init__(
+        self
+    ):
         super().__init__(suffix="xlsm")
 
-    def deserialize(self, filepath: Path|str, schema=None, sheet_name: str = "sheet1", engine: str = "openpyxl", read_options: dict[str, Any] = None, **params) -> None:
-        """Read an XLSM file and return a Polars DataFrame."""
+    def deserialize(
+        self,
+        filepath: Path|str,
+        schema=None,
+        sheet_name: str = "sheet1",
+        engine: str = "openpyxl",
+        read_options: dict[str,
+        Any] = None,
+        **params
+    ) -> None:
+        """ Reads an XLSM file and return a Polars DataFrame
+        """
         return pl.read_excel(
             str(filepath),
             schema_overrides=schema,
@@ -33,8 +46,7 @@ class XLSM_IO(IO):
         sheets: list[str] = None,
         copy_formulas: Iterable[dict[str, str]] = None
     ) -> None:
-        """
-            Write a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any).
+        """ Writes a df in a xlsm file based on another xlsm file (to keep the macros and the custom ribbon if any).
 
                 copy_formulas param is used to copy a range of formula to another one (and maybe extend it to last row) :
                     ex: copy_formulas=({"origin_sheet": "origin", "origin_ref": "B2:B2", "dest_sheet": "dest", "dest_ref": "B2:B2", "extend_using_col": "U"},)

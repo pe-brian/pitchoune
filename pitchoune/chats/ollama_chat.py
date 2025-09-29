@@ -2,14 +2,26 @@ from pitchoune.chat import Chat
 
 
 class OllamaChat(Chat):
-    """Chat class for Ollama models."""
-    def __init__(self, model: str, prompt: str = None, **params):
+    """ Chat class for Ollama models.
+    """
+    def __init__(
+        self,
+        model: str,
+        prompt: str = None,
+        **params
+    ):
         super().__init__(model=model, prompt=prompt, **params)
 
-    def send_msg(self, text: str, prompt: str = None) -> str:
-        """Send a message to the chat and return the response."""
+    def send_msg(
+        self,
+        text: str,
+        prompt: str = None
+    ) -> str:
+        """ Send a message to the chat and return the response.
+        """
         if prompt:
             self._prompt = prompt
+        
         import ollama
         return ollama.chat(
             model=self._model,
@@ -22,9 +34,5 @@ class OllamaChat(Chat):
                     "content": text,
                 },
             ],
-            options={
-                "temperature": self._params["temperature"],
-                "max_tokens": self._params["max_tokens"],
-                "top_p": self._params["top_p"],
-            }
+            options=self._params
         ).message.content

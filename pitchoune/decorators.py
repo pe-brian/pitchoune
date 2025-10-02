@@ -230,7 +230,7 @@ def output(
 
             if checks:
                 for check in checks:
-                    ret = res(check)
+                    ret = check(res)
                     if ret:
                         raise RequirementsNotSatisfied(ret)
             

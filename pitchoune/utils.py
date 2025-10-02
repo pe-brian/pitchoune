@@ -28,7 +28,7 @@ def check_duplicates(
 ) -> None:
     """ Throws an error if duplicates are found in the dataframe.
     """
-    duplicates = df.group_by(id_cols).len().filter(pl.col("count") > 1)
+    duplicates = df.group_by(id_cols).len().filter(pl.col("len") > 1)
     if len(duplicates) > 0:
         raise ValueError(f"Des doublons ont été trouvés :\n{duplicates}")
 

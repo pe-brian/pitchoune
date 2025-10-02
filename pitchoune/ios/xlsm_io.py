@@ -20,13 +20,12 @@ class XLSM_IO(IO):
         schema=None,
         sheet_name: str = "sheet1",
         engine: str = "openpyxl",
-        read_options: dict[str,
-        Any] = None,
+        read_options: dict[str, Any] = None,
         **params
     ) -> None:
         """ Reads an XLSM file and return a Polars DataFrame
         """
-        return pl.read_excel(
+        df = pl.read_excel(
             str(filepath),
             schema_overrides=schema,
             sheet_name=sheet_name,
@@ -35,6 +34,11 @@ class XLSM_IO(IO):
             infer_schema_length=10000,
             **params
         )
+        df = df.with_columns(
+            pl.col(col).str.replace_all("_x000D_", "")
+            for col in df.columns if df[col].dtype in (pl.Utf8, pl.String)
+        )
+        return df
 
     def serialize(
         self,

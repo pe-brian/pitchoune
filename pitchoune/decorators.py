@@ -316,7 +316,7 @@ def use_chat(
                 new_prompt_filepath = Path(prompt_filepath)
             new_prompt = prompt  # Get the prompt from the decorator
             if new_prompt is None and prompt_filepath is not None:
-                with open(new_prompt_filepath, "r") as f:
+                with open(new_prompt_filepath, "r", encoding="utf8") as f:
                     new_prompt = f.read()
             kwargs[name] = base_chat_factory.create(
                 model=model,
@@ -343,6 +343,7 @@ def requested(
                 if rule.startswith("return:"):
                     continue
                 if not evaluate_rule(rule):
+                    print(evaluate_rule(rule))
                     raise RequirementsNotSatisfied(f"Rule not satisfied: {rule}")
 
             result = func(*args, **kwargs)

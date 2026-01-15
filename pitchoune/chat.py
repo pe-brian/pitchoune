@@ -11,7 +11,8 @@ class Chat:
         self._params = params
 
     def send_msg(
-        self, text: str,
+        self,
+        text: str,
         prompt: str = None
     ) -> str:
         """Send a message to the chat and return the response."""

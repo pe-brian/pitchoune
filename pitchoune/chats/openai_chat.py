@@ -33,7 +33,7 @@ class OpenAIChat(Chat):
         if self._client is None:
             raise Exception("Cannot create an OpenAI client without a valid OPENAI_API_KEY !")
         return self._client.chat.completions.create(
-            model = self._params["model"],
+            model = self._model,
             messages=[
                 {
                     "role": "system",
@@ -42,6 +42,7 @@ class OpenAIChat(Chat):
                 {
                     "role": "user",
                     "content": text
-                }
-            ]
+                },
+            ],
+            **self._params
         ).choices[0].message.content
